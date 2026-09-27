@@ -1,5 +1,6 @@
 import { defineStore } from 'pinia'
 import { supabase } from '../supabase'
+import { useProductSetsStore } from './productSets'
 
 export const useOrdersStore = defineStore('orders', {
   state: () => ({
@@ -247,29 +248,129 @@ export const useOrdersStore = defineStore('orders', {
 
     // Calculate total items in a column (breaking down sets into individual products)
     getColumnItemCount(status, seasonId = null) {
+      return this.getColumnProductSummary(status, seasonId).reduce((counts, item) => {
+        counts[item.name] = item.count
+        return counts
+      }, {})
+    },
+
+    getColumnProductSummary(status, seasonId = null) {
+      const productSetsStore = useProductSetsStore()
       const ordersInColumn = seasonId 
         ? this.orders.filter(order => order.status === status && order.season_id === seasonId)
         : this.orders.filter(order => order.status === status)
       
-      const itemCounts = {}
+      const products = {}
       
       ordersInColumn.forEach(order => {
         const items = this.getOrderItems(order.id)
         items.forEach(item => {
           if (item.product_id && item.products) {
-            // Single product
             const productName = item.products.name
-            itemCounts[productName] = (itemCounts[productName] || 0) + item.quantity
+            const product = products[item.product_id] || {
+              id: item.product_id,
+              name: productName,
+              count: 0,
+              orders: []
+            }
+            product.count += item.quantity
+            product.orders.push({
+              clientName: order.client_name,
+              productName,
+              quantity: item.quantity
+            })
+            products[item.product_id] = product
           } else if (item.set_id && item.product_sets) {
-            // Set - need to break it down (this will be implemented when we have set_items data)
-            // For now, just count the set
-            const setName = item.product_sets.name
-            itemCounts[setName] = (itemCounts[setName] || 0) + item.quantity
+            const setItems = productSetsStore.getSetItems(item.set_id)
+
+            if (setItems.length > 0) {
+              setItems.forEach(setItem => {
+                if (!setItem.products) return
+                const productId = setItem.product_id
+                const productName = setItem.products.name
+                const quantity = setItem.quantity * item.quantity
+                const product = products[productId] || {
+                  id: productId,
+                  name: productName,
+                  count: 0,
+                  orders: []
+                }
+                product.count += quantity
+                product.orders.push({
+                  clientName: order.client_name,
+                  productName,
+                  quantity
+                })
+                products[productId] = product
+              })
+            } else {
+              const setName = item.product_sets.name || 'Zestaw'
+              const product = products[`set-${item.set_id}`] || {
+                id: `set-${item.set_id}`,
+                name: setName,
+                count: 0,
+                orders: []
+              }
+              product.count += item.quantity
+              product.orders.push({
+                clientName: order.client_name,
+                productName: setName,
+                quantity: item.quantity
+              })
+              products[`set-${item.set_id}`] = product
+            }
           }
         })
       })
       
-      return itemCounts
+      return Object.values(products).sort((firstProduct, secondProduct) => secondProduct.count - firstProduct.count)
+    },
+
+    getProductOrders(productId) {
+      const productSetsStore = useProductSetsStore()
+      const productOrders = {}
+      const isSetFallback = String(productId).startsWith('set-')
+      const targetSetId = isSetFallback ? String(productId).slice(4) : null
+
+      const addProductOrder = (order, productName, quantity) => {
+        const existing = productOrders[order.id]
+        if (existing) {
+          existing.quantity += quantity
+          return
+        }
+
+        productOrders[order.id] = {
+          orderId: order.id,
+          clientName: order.client_name,
+          productName,
+          quantity
+        }
+      }
+
+      this.orders.forEach(order => {
+        this.getOrderItems(order.id).forEach(item => {
+          if (item.product_id === productId && item.products) {
+            addProductOrder(order, item.products.name, item.quantity)
+            return
+          }
+
+          if (!item.set_id || !item.product_sets) return
+          const setItems = productSetsStore.getSetItems(item.set_id)
+          setItems.forEach(setItem => {
+            const matchesProduct = setItem.product_id === productId && setItem.products
+            const matchesFallbackSet = isSetFallback && String(item.set_id) === targetSetId
+            if (matchesProduct || matchesFallbackSet) {
+              addProductOrder(
+                order,
+                setItem.products?.name || item.product_sets.name,
+                matchesProduct ? setItem.quantity * item.quantity : item.quantity
+              )
+            }
+          })
+        })
+      })
+
+      return Object.values(productOrders)
     }
   }
 })

@@ -1,9 +1,12 @@
 import { defineStore } from 'pinia'
 import { supabase } from '../supabase'
 
+const DEFAULT_SEASON_KEY = 'pierniczenie_default_season_id'
+
 export const useSeasonsStore = defineStore('seasons', {
   state: () => ({
     seasons: [],
+    defaultSeasonId: localStorage.getItem(DEFAULT_SEASON_KEY) || '',
     loading: false,
     error: null
   }),
@@ -22,6 +25,10 @@ export const useSeasonsStore = defineStore('seasons', {
         if (error) throw error
         
         this.seasons = data || []
+        if (this.defaultSeasonId && !this.seasons.some(season => String(season.id) === String(this.defaultSeasonId))) {
+          this.defaultSeasonId = ''
+          localStorage.removeItem(DEFAULT_SEASON_KEY)
+        }
         console.log('Fetched seasons:', this.seasons)
       } catch (error) {
         this.error = error.message
@@ -98,6 +105,10 @@ export const useSeasonsStore = defineStore('seasons', {
         if (error) throw error
         
         this.seasons = this.seasons.filter(season => season.id !== seasonId)
+        if (String(this.defaultSeasonId) === String(seasonId)) {
+          this.defaultSeasonId = ''
+          localStorage.removeItem(DEFAULT_SEASON_KEY)
+        }
         
         return { success: true }
       } catch (error) {
@@ -111,6 +122,18 @@ export const useSeasonsStore = defineStore('seasons', {
 
     getActiveSeason() {
       return this.seasons.find(season => season.is_active) || null
+    },
+
+    getDefaultSeason() {
+      return this.seasons.find(season => String(season.id) === String(this.defaultSeasonId)) || null
+    },
+
+    setDefaultSeason(seasonId) {
+      const season = this.seasons.find(item => String(item.id) === String(seasonId))
+      if (!season) return
+
+      this.defaultSeasonId = String(season.id)
+      localStorage.setItem(DEFAULT_SEASON_KEY, this.defaultSeasonId)
     }
   }
 })

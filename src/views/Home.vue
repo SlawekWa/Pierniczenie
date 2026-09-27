@@ -10,36 +10,34 @@
             <p class="text-gray-600">Zarządzaj zamówieniami w czasie rzeczywistym</p>
           </div>
           <div class="flex items-center gap-4">
+            <button
+              type="button"
+              @click="toggleSelectionMode"
+              class="flex items-center gap-2 px-4 py-3 rounded-xl transition-all duration-200"
+              :class="selectionMode ? 'bg-gray-200 text-gray-700 hover:bg-gray-300' : 'bg-red-50 text-red-600 hover:bg-red-100'"
+            >
+              <span>{{ selectionMode ? 'Anuluj zaznaczanie' : 'Zaznacz kilka' }}</span>
+            </button>
+            <button
+              v-if="selectionMode && selectedOrderIds.length"
+              type="button"
+              @click="openBulkDeleteConfirmation"
+              class="flex items-center gap-2 px-4 py-3 bg-red-600 text-white rounded-xl hover:bg-red-700 transition-all duration-200"
+            >
+              Usuń wszystkie ({{ selectedOrderIds.length }})
+            </button>
             <div class="relative">
               <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <select
-                v-model="selectedSeasonId"
-                @change="handleSeasonChange"
-                class="pl-12 pr-10 py-3 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md appearance-none min-w-[200px]"
-              >
+              <select v-model="selectedSeasonId" @change="handleSeasonChange" class="pl-12 pr-10 py-3 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md appearance-none min-w-[200px]">
                 <option value="">Wszystkie sezony</option>
-                <option v-for="season in seasonsStore.seasons" :key="season.id" :value="season.id">
-                  {{ season.name }}
-                </option>
+                <option v-for="season in seasonsStore.seasons" :key="season.id" :value="season.id">{{ season.name }}</option>
               </select>
-              <div class="absolute inset-y-0 right-0 flex items-center px-4 pointer-events-none">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
-                </svg>
-              </div>
             </div>
-            <button
-              @click="handleRefreshOrders"
-              :disabled="ordersStore.loading"
-              class="flex items-center gap-2 px-4 py-3 bg-indigo-50/50 text-indigo-600 rounded-xl hover:bg-indigo-100/50 transition-all duration-200 disabled:opacity-50"
-            >
-              <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+            <button @click="handleRefreshOrders" :disabled="ordersStore.loading" class="flex items-center gap-2 px-4 py-3 bg-indigo-50/50 text-indigo-600 rounded-xl hover:bg-indigo-100/50 transition-all duration-200 disabled:opacity-50">
               <span>{{ ordersStore.loading ? 'Ładowanie...' : 'Odśwież' }}</span>
             </button>
           </div>
@@ -97,11 +95,42 @@
 
           <div class="mb-4 p-3 rounded-xl border" :class="column.summary">
             <p class="text-xs font-semibold mb-2" :class="column.summaryTitle">Podsumowanie:</p>
-            <div v-if="Object.keys(getColumnItemCount(column.status)).length > 0" class="space-y-1">
-              <div v-for="(count, item) in getColumnItemCount(column.status)" :key="item" class="flex justify-between text-xs" :class="column.summaryItem">
-                <span>{{ item }}</span>
-                <span class="font-semibold">{{ count }}x</span>
+            <div v-if="getColumnProductSummary(column.status).length > 0" class="space-y-1">
+              <div
+                v-for="product in visibleColumnProducts(column.status)"
+                :key="product.id"
+                class="flex items-center justify-between gap-2 text-xs"
+                :class="column.summaryItem"
+              >
+                <span class="min-w-0 truncate">{{ product.name }}</span>
+                <span class="flex items-center gap-1 shrink-0">
+                  <span class="font-semibold">{{ product.count }}x</span>
+                  <button
+                    type="button"
+                    title="Pokaż zamówienia"
+                    class="w-5 h-5 rounded-full border border-current/40 flex items-center justify-center hover:bg-white/70 transition"
+                    @click.stop="openProductOrders(product)"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <circle cx="12" cy="12" r="9" stroke-width="2" />
+                      <path stroke-linecap="round" stroke-width="2" d="M12 11v5m0-8h.01" />
+                    </svg>
+                  </button>
+                </span>
               </div>
+              <button
+                v-if="getColumnProductSummary(column.status).length > 3"
+                type="button"
+                class="w-full pt-1 text-xs font-semibold flex items-center justify-center gap-1 hover:underline"
+                :class="column.summaryItem"
+                @click="toggleColumnSummary(column.status)"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path v-if="expandedSummaries[column.status]" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 15l7-7 7 7" />
+                  <path v-else stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+                </svg>
+                {{ expandedSummaries[column.status] ? 'Zwiń' : 'Pokaż więcej' }}
+              </button>
             </div>
             <p v-else class="text-xs" :class="column.summaryEmpty">Brak przedmiotów</p>
           </div>
@@ -110,20 +139,95 @@
             <div
               v-for="order in getColumnOrders(column.status)"
               :key="order.id"
-              draggable="true"
+              :draggable="!selectionMode"
               @dragstart="handleDragStart($event, order.id)"
               @dragend="handleDragEnd"
-              @click="openOrderDetails(order)"
+              @click="selectionMode ? toggleOrderSelection(order.id) : openOrderDetails(order)"
               class="bg-gradient-to-br from-white to-gray-50/50 rounded-2xl border border-gray-200/50 p-4 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.02] cursor-move"
               :class="{ 'opacity-50': draggedOrderId === order.id }"
               :style="{ borderLeft: `4px solid ${order.seasons?.color_hex || '#E0E0E0'}` }"
             >
-              <h4 class="font-bold text-gray-800 text-sm mb-1">{{ order.client_name }}</h4>
+              <div class="flex items-center gap-2">
+                <input
+                  v-if="selectionMode"
+                  type="checkbox"
+                  :checked="selectedOrderIds.includes(order.id)"
+                  @click.stop
+                  @change="toggleOrderSelection(order.id)"
+                  class="w-4 h-4 text-red-600 rounded focus:ring-red-500"
+                />
+                <h4 class="font-bold text-gray-800 text-sm mb-1">{{ order.client_name }}</h4>
+              </div>
               <p class="text-xs text-gray-500">{{ formatDate(order.due_date) }}</p>
             </div>
             <p v-if="getColumnOrders(column.status).length === 0" class="text-xs text-gray-400 text-center py-8 pointer-events-none">
               Upuść zamówienie tutaj
             </p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showBulkDeleteModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="closeBulkDeleteConfirmation">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-bold text-gray-800 mb-2">Usuń zamówienia</h3>
+        <p class="text-sm text-gray-600 mb-4">Czy na pewno chcesz usunąć zaznaczone zamówienia?</p>
+        <ul class="space-y-2 mb-5">
+          <li v-for="order in selectedOrders" :key="order.id" class="bg-gray-50 rounded-xl px-4 py-3 font-semibold text-gray-800">
+            {{ order.client_name }}
+          </li>
+        </ul>
+        <p v-if="bulkDeleteError" class="mb-4 text-sm text-red-600">{{ bulkDeleteError }}</p>
+        <div class="flex gap-3">
+          <button
+            type="button"
+            @click="closeBulkDeleteConfirmation"
+            :disabled="deletingOrders"
+            class="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition disabled:opacity-50"
+          >
+            Anuluj
+          </button>
+          <button
+            type="button"
+            @click="deleteSelectedOrders"
+            :disabled="deletingOrders"
+            class="flex-1 px-4 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition disabled:opacity-50"
+          >
+            {{ deletingOrders ? 'Usuwanie...' : 'Usuń' }}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <div v-if="showProductOrdersModal && selectedProduct" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4" @click.self="closeProductOrders">
+      <div class="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto">
+        <div class="flex items-center justify-between mb-5">
+          <div>
+            <p class="text-xs font-semibold text-gray-500 uppercase">Zamówienia</p>
+            <h3 class="text-xl font-bold text-gray-800">{{ selectedProduct.name }}</h3>
+          </div>
+          <button @click="closeProductOrders" class="text-gray-400 hover:text-gray-600 transition" title="Zamknij">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+            </svg>
+          </button>
+        </div>
+        <div class="space-y-3">
+          <div v-for="(order, index) in selectedProduct.orders" :key="`${order.orderId}-${index}`" class="bg-gray-50 rounded-xl px-4 py-3">
+            <div class="flex items-center justify-between gap-3">
+              <p class="font-semibold text-gray-800">{{ order.clientName }}</p>
+              <button
+                type="button"
+                class="text-xs font-semibold text-indigo-600 hover:text-indigo-800 whitespace-nowrap"
+                @click="openOrderFromProduct(order.orderId)"
+              >
+                Otwórz zamówienie
+              </button>
+            </div>
+            <div class="flex justify-between gap-3 text-sm text-gray-600">
+              <span>{{ order.productName }}</span>
+              <span class="font-semibold shrink-0">{{ order.quantity }}x</span>
+            </div>
           </div>
         </div>
       </div>
@@ -166,12 +270,13 @@
           </div>
           
           <div class="space-y-2">
-            <label class="block text-sm font-semibold text-gray-700 mb-1">Cena (opcjonalne)</label>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Cena zamówienia (automatyczna)</label>
             <input
               type="number"
               v-model="newOrder.total_price"
               step="0.01"
               min="0"
+              readonly
               class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
               placeholder="0.00"
             />
@@ -187,28 +292,55 @@
               >
                 <select
                   v-model="item.type"
+                  @change="resetOrderItemSelection(item)"
                   required
-                  class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
+                  class="w-28 shrink-0 px-2 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
                 >
                   <option value="product">Produkt</option>
                   <option value="set">Zestaw</option>
                 </select>
-                <select
-                  v-model="item.id"
-                  required
-                  class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
-                >
-                  <option value="">Wybierz {{ item.type === 'product' ? 'produkt' : 'zestaw' }}</option>
-                  <option v-if="item.type === 'product'" v-for="product in productsStore.products" :key="product.id" :value="product.id">
-                    {{ product.name }} ({{ product.price_per_piece }} PLN)
-                  </option>
-                  <option v-if="item.type === 'set'" v-for="set in productSetsStore.productSets" :key="set.id" :value="set.id">
-                    {{ set.name }} ({{ set.price_per_set }} PLN)
-                  </option>
-                </select>
+                <div class="relative flex-1 min-w-0">
+                  <input
+                    v-model="item.search"
+                    @input="handleOrderItemSearch(item)"
+                    @focus="item.showOptions = true"
+                    :placeholder="`Wybierz ${item.type === 'product' ? 'produkt' : 'zestaw'}`"
+                    required
+                    class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+                  />
+                  <div
+                    v-if="item.showOptions && getOrderItemOptions(item).length"
+                    class="absolute left-0 right-0 top-full mt-1 z-20 max-h-48 overflow-y-auto bg-white border border-gray-200 rounded-xl shadow-xl p-1"
+                  >
+                    <button
+                      v-for="option in getOrderItemOptions(item)"
+                      :key="option.id"
+                      type="button"
+                      @mousedown.prevent="selectOrderItem(item, option)"
+                      class="w-full text-left px-3 py-2 rounded-lg hover:bg-indigo-50 transition"
+                    >
+                      <span class="block text-sm text-gray-800">{{ option.name }}</span>
+                      <span class="block text-xs text-gray-500">{{ item.type === 'product' ? (option.price_per_piece ?? 0) : option.price_per_set }} PLN</span>
+                    </button>
+                  </div>
+                </div>
+                <div class="flex items-center gap-1 shrink-0">
+                  <input
+                    type="number"
+                    v-model.number="item.unit_price"
+                    @input="recalculateNewOrderTotal"
+                    min="0"
+                    step="0.01"
+                    required
+                    class="w-16 px-2 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200"
+                    placeholder="Cena"
+                  />
+                  <span class="text-xs text-gray-500">PLN</span>
+                </div>
                 <input
                   type="number"
-                  v-model="item.quantity"
+                  v-model.number="item.quantity"
+                  @input="recalculateNewOrderTotal"
                   required
                   min="1"
                   class="w-20 px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
@@ -368,12 +500,13 @@
               </select>
             </div>
             <div>
-              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Cena</label>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Cena zamówienia (automatyczna)</label>
               <input
                 v-model="editOrder.total_price"
                 type="number"
                 step="0.01"
                 min="0"
+                readonly
                 class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
             </div>
@@ -396,6 +529,7 @@
               >
                 <select
                   v-model="item.type"
+                  @change="resetEditItemSelection(item)"
                   required
                   class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
@@ -404,6 +538,7 @@
                 </select>
                 <select
                   v-model="item.id"
+                  @change="setEditItemPrice(item)"
                   required
                   class="flex-1 px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
                 >
@@ -415,8 +550,22 @@
                     {{ set.name }}
                   </option>
                 </select>
+                <div class="flex items-center gap-1 shrink-0">
+                  <input
+                    v-model.number="item.unit_price"
+                    @input="recalculateEditOrderTotal"
+                    type="number"
+                    required
+                    min="0"
+                    step="0.01"
+                    class="w-16 px-2 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                    placeholder="Cena"
+                  />
+                  <span class="text-xs text-gray-500">PLN</span>
+                </div>
                 <input
-                  v-model="item.quantity"
+                  v-model.number="item.quantity"
+                  @input="recalculateEditOrderTotal"
                   type="number"
                   required
                   min="1"
@@ -456,6 +605,15 @@
             </button>
           </template>
           <template v-else>
+            <button
+              v-if="selectedOrder.status === 'completed'"
+              type="button"
+              @click="deleteCompletedOrder"
+              :disabled="savingOrder"
+              class="flex-1 px-4 py-3 bg-red-100 text-red-700 rounded-2xl hover:bg-red-200 transition-all duration-200 font-medium disabled:opacity-50"
+            >
+              Usuń
+            </button>
             <button
               type="button"
               @click="cancelEditingOrder"
@@ -549,7 +707,9 @@ const columns = [
 const selectedSeasonId = ref('')
 const showAddOrderModal = ref(false)
 const showOrderDetailsModal = ref(false)
+const showProductOrdersModal = ref(false)
 const selectedOrder = ref(null)
+const selectedProduct = ref(null)
 const isEditingOrder = ref(false)
 const savingOrder = ref(false)
 const editOrderError = ref('')
@@ -565,6 +725,12 @@ const editOrder = ref({
 const draggedOrderId = ref(null)
 const dragOverStatus = ref(null)
 const skipNextClick = ref(false)
+const expandedSummaries = ref({})
+const selectionMode = ref(false)
+const selectedOrderIds = ref([])
+const showBulkDeleteModal = ref(false)
+const deletingOrders = ref(false)
+const bulkDeleteError = ref('')
 
 const newOrder = ref({
   client_name: '',
@@ -579,16 +745,93 @@ const selectedOrderItems = computed(() => {
   return ordersStore.getOrderItems(selectedOrder.value.id)
 })
 
+const selectedOrders = computed(() => {
+  return ordersStore.orders.filter(order => selectedOrderIds.value.includes(order.id))
+})
+
 const addOrderItem = () => {
   newOrder.value.items.push({
     type: 'product',
     id: '',
-    quantity: 1
+    quantity: 1,
+    unit_price: 0,
+    search: '',
+    showOptions: false
   })
 }
 
 const removeOrderItem = (index) => {
   newOrder.value.items.splice(index, 1)
+}
+
+const normalizeSearchValue = (value) => {
+  return String(value)
+    .toLowerCase()
+    .replace(/ł/g, 'l')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+}
+
+const getOrderItemOptions = (item) => {
+  const options = item.type === 'product' ? productsStore.products : productSetsStore.productSets
+  const search = normalizeSearchValue(item.search?.trim() || '')
+  if (!search) return options
+  return options.filter(option => normalizeSearchValue(option.name).includes(search))
+}
+
+const selectOrderItem = (item, option) => {
+  item.id = option.id
+  item.search = option.name
+  item.unit_price = Number(item.type === 'product' ? option.price_per_piece : option.price_per_set) || 0
+  item.showOptions = false
+  recalculateNewOrderTotal()
+}
+
+const handleOrderItemSearch = (item) => {
+  const options = item.type === 'product' ? productsStore.products : productSetsStore.productSets
+  const selected = options.find(option => String(option.id) === String(item.id))
+  if (!selected || selected.name !== item.search) {
+    item.id = ''
+    item.unit_price = 0
+  }
+  item.showOptions = true
+}
+
+const resetOrderItemSelection = (item) => {
+  item.id = ''
+  item.search = ''
+  item.unit_price = 0
+  item.showOptions = false
+  recalculateNewOrderTotal()
+}
+
+const recalculateNewOrderTotal = () => {
+  newOrder.value.total_price = newOrder.value.items.reduce((total, item) => {
+    return total + ((Number(item.unit_price) || 0) * (Number(item.quantity) || 0))
+  }, 0)
+}
+
+const getCatalogItemPrice = (item) => {
+  const collection = item.type === 'product' ? productsStore.products : productSetsStore.productSets
+  const catalogItem = collection.find(option => String(option.id) === String(item.id))
+  return Number(item.type === 'product' ? catalogItem?.price_per_piece : catalogItem?.price_per_set) || 0
+}
+
+const resetEditItemSelection = (item) => {
+  item.id = ''
+  item.unit_price = 0
+  recalculateEditOrderTotal()
+}
+
+const setEditItemPrice = (item) => {
+  item.unit_price = getCatalogItemPrice(item)
+  recalculateEditOrderTotal()
+}
+
+const recalculateEditOrderTotal = () => {
+  editOrder.value.total_price = editOrder.value.items.reduce((total, item) => {
+    return total + ((Number(item.unit_price) || 0) * (Number(item.quantity) || 0))
+  }, 0)
 }
 
 const getSeasonFromItems = () => {
@@ -613,7 +856,7 @@ const handleAddOrder = async () => {
   const orderData = {
     client_name: newOrder.value.client_name,
     due_date: newOrder.value.due_date,
-    total_price: newOrder.value.total_price ? parseFloat(newOrder.value.total_price) : null,
+    total_price: Number(newOrder.value.total_price) || 0,
     season_id: seasonId,
     notes: newOrder.value.notes,
     status: 'ordered'
@@ -659,12 +902,92 @@ const handleRefreshOrders = async () => {
   await ordersStore.fetchOrders(selectedSeasonId.value || null)
 }
 
+const toggleSelectionMode = () => {
+  selectionMode.value = !selectionMode.value
+  if (!selectionMode.value) {
+    selectedOrderIds.value = []
+    closeBulkDeleteConfirmation()
+  }
+}
+
+const toggleOrderSelection = (orderId) => {
+  if (selectedOrderIds.value.includes(orderId)) {
+    selectedOrderIds.value = selectedOrderIds.value.filter(id => id !== orderId)
+  } else {
+    selectedOrderIds.value.push(orderId)
+  }
+}
+
+const openBulkDeleteConfirmation = () => {
+  if (!selectedOrderIds.value.length) return
+  bulkDeleteError.value = ''
+  showBulkDeleteModal.value = true
+}
+
+const closeBulkDeleteConfirmation = () => {
+  if (deletingOrders.value) return
+  showBulkDeleteModal.value = false
+  bulkDeleteError.value = ''
+}
+
+const deleteSelectedOrders = async () => {
+  const orderIds = [...selectedOrderIds.value]
+  deletingOrders.value = true
+  bulkDeleteError.value = ''
+
+  for (const orderId of orderIds) {
+    const result = await ordersStore.deleteOrder(orderId)
+    if (!result.success) {
+      bulkDeleteError.value = result.error || 'Nie udało się usunąć wszystkich zamówień.'
+      deletingOrders.value = false
+      return
+    }
+  }
+
+  deletingOrders.value = false
+  showBulkDeleteModal.value = false
+  selectedOrderIds.value = []
+  selectionMode.value = false
+}
+
 const getColumnOrders = (status) => {
   return ordersStore.orders.filter(order => order.status === status)
 }
 
 const getColumnItemCount = (status) => {
   return ordersStore.getColumnItemCount(status, selectedSeasonId.value || null)
+}
+
+const getColumnProductSummary = (status) => {
+  return ordersStore.getColumnProductSummary(status, selectedSeasonId.value || null)
+}
+
+const visibleColumnProducts = (status) => {
+  const products = getColumnProductSummary(status)
+  return expandedSummaries.value[status] ? products : products.slice(0, 3)
+}
+
+const toggleColumnSummary = (status) => {
+  expandedSummaries.value[status] = !expandedSummaries.value[status]
+}
+
+const openProductOrders = (product) => {
+  selectedProduct.value = {
+    ...product,
+    orders: ordersStore.getProductOrders(product.id)
+  }
+  showProductOrdersModal.value = true
+}
+
+const closeProductOrders = () => {
+  showProductOrdersModal.value = false
+  selectedProduct.value = null
+}
+
+const openOrderFromProduct = (orderId) => {
+  const order = ordersStore.orders.find(item => item.id === orderId)
+  closeProductOrders()
+  if (order) openOrderDetails(order)
 }
 
 const formatDate = (dateString) => {
@@ -687,7 +1010,10 @@ const buildEditItems = (orderId) => {
     itemId: item.id,
     type: item.set_id ? 'set' : 'product',
     id: item.set_id || item.product_id || '',
-    quantity: item.quantity
+    quantity: item.quantity,
+    unit_price: item.unit_price ?? (item.set_id
+      ? Number(item.product_sets?.price_per_set) || 0
+      : Number(item.products?.price_per_piece) || 0)
   }))
 }
 
@@ -703,6 +1029,7 @@ const startEditingOrder = () => {
     season_id: selectedOrder.value.season_id || '',
     items: buildEditItems(selectedOrder.value.id)
   }
+  recalculateEditOrderTotal()
   isEditingOrder.value = true
 }
 
@@ -711,12 +1038,29 @@ const cancelEditingOrder = () => {
   editOrderError.value = ''
 }
 
+const deleteCompletedOrder = async () => {
+  if (!selectedOrder.value || selectedOrder.value.status !== 'completed') return
+  if (!window.confirm('Czy na pewno chcesz usunąć to zamówienie?')) return
+
+  savingOrder.value = true
+  const result = await ordersStore.deleteOrder(selectedOrder.value.id)
+  savingOrder.value = false
+
+  if (!result.success) {
+    editOrderError.value = result.error || 'Nie udało się usunąć zamówienia.'
+    return
+  }
+
+  closeOrderDetails()
+}
+
 const addEditOrderItem = () => {
   editOrder.value.items.push({
     itemId: null,
     type: 'product',
     id: '',
-    quantity: 1
+    quantity: 1,
+    unit_price: 0
   })
 }
 

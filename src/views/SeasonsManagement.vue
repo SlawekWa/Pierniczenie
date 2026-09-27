@@ -148,6 +148,12 @@
                     <div class="flex items-center gap-2 mb-2">
                       <h4 class="font-bold text-gray-800 text-lg">{{ season.name }}</h4>
                       <span
+                        v-if="String(seasonsStore.defaultSeasonId) === String(season.id)"
+                        class="px-3 py-1 rounded-full text-xs font-semibold bg-indigo-100 text-indigo-700"
+                      >
+                        Domyślny
+                      </span>
+                      <span
                         class="px-3 py-1 rounded-full text-xs font-semibold flex items-center gap-2"
                         :style="{ backgroundColor: season.color_hex + '20', color: season.color_hex, border: `1px solid ${season.color_hex}40` }"
                       >
@@ -155,6 +161,16 @@
                         {{ season.is_active ? 'Aktywny' : 'Nieaktywny' }}
                       </span>
                     </div>
+                    <label class="inline-flex items-center gap-2 text-sm text-gray-600 cursor-pointer">
+                      <input
+                        type="radio"
+                        name="default-season"
+                        :checked="String(seasonsStore.defaultSeasonId) === String(season.id)"
+                        @change="seasonsStore.setDefaultSeason(season.id)"
+                        class="w-4 h-4 text-indigo-600 focus:ring-indigo-500"
+                      />
+                      Ustaw jako domyślny przy dodawaniu
+                    </label>
                     <div class="flex items-center gap-2 text-gray-600">
                       <div class="w-6 h-6 rounded-full border-2" :style="{ backgroundColor: season.color_hex, borderColor: season.color_hex }"></div>
                       <span class="font-mono text-sm">{{ season.color_hex }}</span>
