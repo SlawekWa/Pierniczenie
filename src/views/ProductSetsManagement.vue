@@ -12,7 +12,7 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Add Set Form -->
         <div class="lg:col-span-1">
-          <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-6 sticky top-24">
+          <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-6 sticky top-24" ref="setFormPanel">
             <div class="flex items-center gap-3 mb-6">
               <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -104,6 +104,32 @@
                 </div>
               </div>
               
+              <div class="space-y-2">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Link do zdjęcia (opcjonalny)</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="url"
+                    v-model="newSet.image_url"
+                    class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                    placeholder="https://.../sets/mini-holiday-box.jpg"
+                  />
+                </div>
+                <p class="text-xs text-gray-500 ml-1">Link do zdjęcia zestawu z bucketu (np. Supabase Storage)</p>
+                <div v-if="newSet.image_url" class="pt-1">
+                  <img
+                    :src="newSet.image_url"
+                    alt="Podgląd zdjęcia zestawu"
+                    class="h-32 w-32 object-cover rounded-2xl border border-gray-200 bg-gray-50"
+                    @error="handleImageError"
+                  />
+                </div>
+              </div>
+
               <button
                 type="submit"
                 :disabled="productSetsStore.loading"
@@ -183,62 +209,109 @@
               <div
                 v-for="set in productSetsStore.productSets"
                 :key="set.id"
-                class="bg-gradient-to-br from-white to-gray-50/50 rounded-2xl border border-gray-200/50 p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.01]"
+                class="bg-gradient-to-br from-white to-gray-50/50 rounded-2xl border border-gray-200/50 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.01]"
               >
                 <div class="mb-4 grid gap-3 sm:grid-cols-[minmax(0,1fr)_auto] sm:items-start">
                   <div class="min-w-0 space-y-3">
-                    <div class="flex flex-wrap items-center gap-2">
-                      <h4 class="font-bold text-gray-800 text-lg">{{ set.name }}</h4>
-                      <span
-                        v-if="set.seasons"
-                        class="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 shadow-sm"
-                        :style="{ backgroundColor: set.seasons.color_hex + '45', color: '#111827', border: `1px solid ${set.seasons.color_hex}` }"
+                    <div class="flex items-start gap-3">
+                      <div
+                        v-if="hasSetImage(set)"
+                        class="w-20 h-20 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50"
                       >
-                        <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: set.seasons.color_hex }"></span>
-                        {{ set.seasons.name }}
-                      </span>
+                        <img
+                          :src="setImageUrl(set)"
+                          :alt="set.name"
+                          class="w-full h-full object-cover"
+                          loading="lazy"
+                          @error="markSetImageAsBroken(set.id)"
+                        />
+                      </div>
+                      <div
+                        v-else
+                        class="w-20 h-20 shrink-0 rounded-2xl border border-gray-200 bg-gray-100 flex items-center justify-center"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
+                      <div class="min-w-0 space-y-1">
+                        <div class="flex flex-wrap items-center gap-2 min-w-0">
+                          <h4 class="font-bold text-gray-800 text-lg min-w-0 break-words">{{ set.name }}</h4>
+                          <span
+                            v-if="set.seasons"
+                            class="px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm max-w-full"
+                            :style="{ backgroundColor: set.seasons.color_hex + '45', color: '#111827', border: `1px solid ${set.seasons.color_hex}` }"
+                          >
+                            <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: set.seasons.color_hex }"></span>
+                            <span class="truncate">{{ set.seasons.name }}</span>
+                          </span>
+                        </div>
+
+                        <div class="flex items-center gap-2 text-gray-600 min-w-0">
+                          <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                          </svg>
+                          <span class="font-medium truncate">{{ set.price_per_set }} PLN/zestaw</span>
+                        </div>
+                      </div>
                     </div>
 
-                    <div class="flex items-center gap-2 text-gray-600 min-w-0">
+                    <a
+                      v-if="set.image_url"
+                      :href="set.image_url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      :title="set.image_url"
+                      class="flex items-center gap-2 text-sm text-indigo-600 hover:text-indigo-700 hover:underline min-w-0 max-w-full"
+                    >
                       <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5m4.5 5.657a4 4 0 000-5.657l-3-3a4 4 0 015.657 5.656l-1.5 1.5" />
                       </svg>
-                      <span class="font-medium truncate">{{ set.price_per_set }} PLN/zestaw</span>
-                    </div>
+                      <span class="truncate min-w-0">{{ set.image_url }}</span>
+                    </a>
 
-                    <div v-if="productSetsStore.getSetItems(set.id).length > 0" class="text-sm text-gray-600 bg-gray-50/50 rounded-xl p-3 min-w-0 break-words">
+                    <div
+                      v-if="productSetsStore.getSetItems(set.id).length > 0"
+                      class="text-sm text-gray-600 bg-gray-50/50 rounded-xl p-3 min-w-0 max-w-full overflow-hidden"
+                    >
                       <span class="font-semibold text-gray-700">Skład:</span>
                       <span class="ml-2">{{ productSetsStore.getSetComposition(set.id) }}</span>
                     </div>
                   </div>
 
-                  <div class="flex gap-2 sm:flex-col sm:items-stretch sm:justify-start">
+                  <div class="flex gap-2 w-full sm:w-auto shrink-0">
                     <button
                       @click="startSetEdit(set)"
-                      class="flex items-center justify-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-200 text-indigo-600 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-all duration-200 min-w-[140px]"
+                      :title="'Edytuj zestaw'"
+                      :aria-label="'Edytuj zestaw'"
+                      class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-3 py-2 bg-indigo-50 border border-indigo-200 text-indigo-600 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-all duration-200 sm:min-w-[140px]"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5h2m-1-1v2m7.071 8.071l-5.657 5.657a2 2 0 01-1.414.586H8a2 2 0 01-2-2v-3.999a2 2 0 01.586-1.414l5.657-5.657a2 2 0 012.828 0l2.999 2.999a2 2 0 010 2.828z" />
                       </svg>
-                      <span>Edytuj</span>
+                      <span class="hidden sm:inline">Edytuj</span>
                     </button>
                     <button
                       @click="handleAddItemToSet(set.id)"
-                      class="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-600 rounded-xl text-sm font-medium hover:from-emerald-100 hover:to-teal-100 transition-all duration-200 min-w-[140px]"
+                      :title="'Dodaj produkt'"
+                      :aria-label="'Dodaj produkt do zestawu'"
+                      class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-emerald-50 to-teal-50 border border-emerald-200 text-emerald-600 rounded-xl text-sm font-medium hover:from-emerald-100 hover:to-teal-100 transition-all duration-200 sm:min-w-[140px]"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                       </svg>
-                      <span>Dodaj produkt</span>
+                      <span class="hidden sm:inline">Dodaj produkt</span>
                     </button>
                     <button
                       @click="handleDeleteSet(set.id)"
-                      class="flex items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium hover:from-red-100 hover:to-pink-100 transition-all duration-200 min-w-[140px]"
+                      :title="'Usuń zestaw'"
+                      :aria-label="'Usuń zestaw'"
+                      class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-3 py-2 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium hover:from-red-100 hover:to-pink-100 transition-all duration-200 sm:min-w-[140px]"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                      <span>Usuń</span>
+                      <span class="hidden sm:inline">Usuń</span>
                     </button>
                   </div>
                 </div>
@@ -280,6 +353,59 @@
               </div>
             </div>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Delete Set Confirmation Modal -->
+    <div
+      v-if="pendingDeleteSet"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      @click.self="closeDeleteSetModal"
+    >
+      <div class="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain">
+        <h3 class="text-xl font-bold text-gray-800 mb-2">Usuń zestaw</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          Zestaw <span class="font-semibold text-gray-800">{{ pendingDeleteSet.name }}</span> zostanie usunięty
+          ze wszystkich zamówień, a ich ceny zostaną pomniejszone o koszt zestawu.
+        </p>
+
+        <div v-if="setDeleteOrders.length" class="mb-4">
+          <p class="text-xs font-semibold text-gray-500 uppercase mb-2">
+            Zawiera ten zestaw ({{ setDeleteOrders.length }})
+          </p>
+          <ul class="space-y-2">
+            <li
+              v-for="order in setDeleteOrders"
+              :key="order.orderId"
+              class="flex items-center justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3"
+            >
+              <span class="font-semibold text-gray-800">{{ order.clientName }}</span>
+              <span class="text-sm text-gray-500">{{ order.quantity }} szt.</span>
+            </li>
+          </ul>
+        </div>
+        <p v-else class="mb-4 text-sm text-gray-500">Ten zestaw nie występuje w żadnym zamówieniu.</p>
+
+        <p v-if="deleteSetError" class="mb-4 text-sm text-red-600">{{ deleteSetError }}</p>
+
+        <div class="flex gap-3">
+          <button
+            type="button"
+            @click="closeDeleteSetModal"
+            :disabled="deletingSet"
+            class="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition disabled:opacity-50"
+          >
+            Anuluj
+          </button>
+          <button
+            type="button"
+            @click="confirmDeleteSet"
+            :disabled="deletingSet"
+            class="flex-1 px-4 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition disabled:opacity-50"
+          >
+            {{ deletingSet ? 'Usuwanie...' : 'Usuń' }}
+          </button>
         </div>
       </div>
     </div>
@@ -386,24 +512,59 @@
 </template>
 
 <script setup>
-import { ref, onMounted, computed } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useProductSetsStore } from '../stores/productSets'
 import { useProductsStore } from '../stores/products'
 import { useSeasonsStore } from '../stores/seasons'
+import { useOrdersStore } from '../stores/orders'
 import Navigation from '../components/Navigation.vue'
+import { PLACEHOLDER_IMAGE_URL } from '../constants'
 
 const productSetsStore = useProductSetsStore()
 const productsStore = useProductsStore()
 const seasonsStore = useSeasonsStore()
+const ordersStore = useOrdersStore()
 
 const newSet = ref({
   name: '',
   price_per_set: '',
   season_id: '',
-  description: ''
+  description: '',
+  image_url: ''
 })
 const editingSetId = ref(null)
+const setFormPanel = ref(null)
 const expandedSetItems = ref({})
+const pendingDeleteSetId = ref(null)
+const deletingSet = ref(false)
+const deleteSetError = ref('')
+
+const pendingDeleteSet = computed(() =>
+  productSetsStore.productSets.find(set => set.id === pendingDeleteSetId.value) || null
+)
+
+const setDeleteOrders = computed(() => {
+  if (pendingDeleteSetId.value == null) return []
+  return ordersStore.getOrdersWithSet(pendingDeleteSetId.value)
+})
+const brokenImages = ref({})
+
+const handleImageError = (event) => {
+  event.target.style.visibility = 'hidden'
+}
+
+const hasSetImage = (set) => !brokenImages.value[set.id]
+
+const setImageUrl = (set) => set.image_url || PLACEHOLDER_IMAGE_URL
+
+const markSetImageAsBroken = (setId) => {
+  brokenImages.value = { ...brokenImages.value, [setId]: true }
+}
+
+const normalizeImageUrl = (value) => {
+  const url = (value || '').trim()
+  return url.length > 0 ? url : null
+}
 
 const showAddItemModal = ref(false)
 const currentSetId = ref(null)
@@ -437,7 +598,8 @@ const resetSetForm = () => {
     name: '',
     price_per_set: '',
     season_id: seasonsStore.getDefaultSeason()?.id || '',
-    description: ''
+    description: '',
+    image_url: ''
   }
   editingSetId.value = null
 }
@@ -447,13 +609,17 @@ const handleSubmitSet = async () => {
     name: newSet.value.name,
     price_per_set: parseFloat(newSet.value.price_per_set),
     season_id: parseInt(newSet.value.season_id),
-    description: newSet.value.description
+    description: newSet.value.description,
+    image_url: normalizeImageUrl(newSet.value.image_url)
   }
   const result = editingSetId.value
     ? await productSetsStore.updateProductSet(editingSetId.value, setData)
     : await productSetsStore.addProductSet(setData)
 
   if (result.success) {
+    if (editingSetId.value && newSet.value.image_url.trim()) {
+      delete brokenImages.value[editingSetId.value]
+    }
     resetSetForm()
   }
 }
@@ -464,7 +630,15 @@ const startSetEdit = (set) => {
     name: set.name || '',
     price_per_set: set.price_per_set ?? '',
     season_id: set.season_id || '',
-    description: set.description || ''
+    description: set.description || '',
+    image_url: set.image_url || ''
+  }
+
+  // On phones the form sits above the set list, so bring it into view.
+  if (window.matchMedia('(max-width: 639px)').matches) {
+    nextTick(() => {
+      setFormPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 }
 
@@ -525,9 +699,41 @@ const handleAddSetItem = async (closeAfterAdd = false) => {
 }
 
 const handleDeleteSet = async (setId) => {
-  if (confirm('Czy na pewno chcesz usunąć ten zestaw?')) {
-    await productSetsStore.deleteProductSet(setId)
+  pendingDeleteSetId.value = setId
+  deleteSetError.value = ''
+  await ordersStore.fetchOrders()
+}
+
+const closeDeleteSetModal = () => {
+  if (deletingSet.value) return
+  pendingDeleteSetId.value = null
+  deleteSetError.value = ''
+}
+
+const confirmDeleteSet = async () => {
+  const setId = pendingDeleteSetId.value
+  if (setId == null) return
+
+  deletingSet.value = true
+  deleteSetError.value = ''
+
+  const result = await ordersStore.deleteSetWithOrders(setId)
+  if (!result.success) {
+    deleteSetError.value = result.error || 'Nie udało się usunąć zestawu.'
+    deletingSet.value = false
+    return
   }
+
+  const setDelete = await productSetsStore.deleteProductSet(setId)
+  if (!setDelete.success) {
+    deleteSetError.value = setDelete.error || 'Nie udało się usunąć zestawu.'
+    deletingSet.value = false
+    return
+  }
+
+  await ordersStore.fetchOrders()
+  deletingSet.value = false
+  pendingDeleteSetId.value = null
 }
 
 const handleDeleteSetItem = async (itemId) => {

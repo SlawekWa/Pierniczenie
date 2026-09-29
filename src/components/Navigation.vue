@@ -12,18 +12,6 @@
             <h1 class="text-base font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent sm:text-xl truncate">
               Pierniczenie
             </h1>
-            <div class="flex items-center gap-2 px-2.5 py-1.5 bg-emerald-50 rounded-xl shrink-0">
-              <span class="text-[10px] sm:text-xs font-semibold text-emerald-700">Zarobki</span>
-              <span class="text-xs sm:text-sm font-bold text-emerald-800">{{ formatMoney(earnings) }}</span>
-              <button
-                v-if="missingPriceOrders.length"
-                type="button"
-                @click="openMissingPrices"
-                class="text-[10px] sm:text-xs font-semibold text-amber-700 hover:text-amber-900 whitespace-nowrap"
-              >
-                Brak ceny ({{ missingPriceOrders.length }})
-              </button>
-            </div>
           </div>
 
           <div class="flex items-center gap-1.5 sm:gap-2 shrink-0">
@@ -36,7 +24,7 @@
 
             <button
               @click="handleLogout"
-              class="flex items-center justify-center w-10 h-10 sm:w-auto sm:px-4 sm:py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:from-red-600 hover:to-pink-600 transition-all duration-200 shadow-lg hover:shadow-xl sm:transform sm:hover:scale-105"
+              class="flex items-center justify-center w-9 h-9 shrink-0 sm:w-auto sm:h-auto sm:px-4 sm:py-2 bg-gradient-to-r from-red-500 to-pink-500 text-white rounded-xl hover:from-red-600 hover:to-pink-600 transition-all duration-200 shadow-lg hover:shadow-xl sm:transform sm:hover:scale-105"
               :title="'Wyloguj'"
               aria-label="Wyloguj"
             >
@@ -45,6 +33,32 @@
               </svg>
               <span class="hidden sm:inline sm:ml-2">Wyloguj</span>
             </button>
+          </div>
+        </div>
+
+        <div class="mt-2 flex items-center gap-1.5 sm:gap-2">
+          <div class="flex items-center gap-2 px-2.5 py-1.5 bg-emerald-50 rounded-xl min-w-0 flex-1 sm:flex-none">
+            <span class="hidden sm:inline text-[10px] sm:text-xs font-semibold text-emerald-700 shrink-0">Zarobki</span>
+            <span class="text-xs sm:text-sm font-bold text-emerald-800 truncate">{{ formatMoney(earnings) }}</span>
+            <button
+              v-if="missingPriceOrders.length"
+              type="button"
+              @click="openMissingPrices"
+              :title="'Zamówienia bez ceny'"
+              :aria-label="`Zamówienia bez ceny: ${missingPriceOrders.length}`"
+              class="ml-auto text-[10px] sm:text-xs font-semibold text-amber-700 hover:text-amber-900 whitespace-nowrap shrink-0"
+            >
+              <span class="sm:hidden">({{ missingPriceOrders.length }})</span>
+              <span class="hidden sm:inline">Brak ceny ({{ missingPriceOrders.length }})</span>
+            </button>
+          </div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 bg-blue-50 rounded-xl min-w-0 flex-1 sm:flex-none">
+            <span class="hidden sm:inline text-[10px] sm:text-xs font-semibold text-blue-700 shrink-0">Wpłacone</span>
+            <span class="text-xs sm:text-sm font-bold text-blue-800 truncate">{{ formatMoney(amountPaid) }}</span>
+          </div>
+          <div class="flex items-center gap-2 px-2.5 py-1.5 bg-purple-50 rounded-xl min-w-0 flex-1 sm:flex-none">
+            <span class="hidden sm:inline text-[10px] sm:text-xs font-semibold text-purple-700 shrink-0">Produkty</span>
+            <span class="text-xs sm:text-sm font-bold text-purple-800 truncate">{{ totalPieces }} szt.</span>
           </div>
         </div>
 
@@ -92,21 +106,22 @@
         </div>
       </div>
     </div>
+  </nav>
 
-    <div v-if="showMissingPricesModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" @click.self="closeMissingPrices">
-      <div class="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto">
-        <div class="flex items-center justify-between mb-5">
-          <div>
-            <p class="text-xs font-semibold text-gray-500 uppercase">Zamówienia bez ceny</p>
-            <h2 class="text-xl font-bold text-gray-800">Uzupełnij ceny</h2>
-          </div>
-          <button type="button" @click="closeMissingPrices" :disabled="savingPrices" class="text-gray-400 hover:text-gray-600 transition disabled:opacity-50" title="Zamknij">
-            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
+  <div v-if="showMissingPricesModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-[60] p-4" @click.self="closeMissingPrices">
+    <div class="bg-white rounded-2xl p-6 w-full max-w-lg max-h-[90vh] overflow-y-auto overscroll-contain">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <p class="text-xs font-semibold text-gray-500 uppercase">Zamówienia bez ceny</p>
+          <h2 class="text-xl font-bold text-gray-800">Uzupełnij ceny</h2>
         </div>
-        <div class="space-y-3">
+        <button type="button" @click="closeMissingPrices" :disabled="savingPrices" class="text-gray-400 hover:text-gray-600 transition disabled:opacity-50" title="Zamknij">
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+          </svg>
+        </button>
+      </div>
+      <div class="space-y-3">
           <div v-for="order in missingPriceOrders" :key="order.id" class="flex items-center justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3">
             <span class="font-semibold text-gray-800 truncate">{{ order.client_name }}</span>
             <div class="flex items-center gap-2 shrink-0">
@@ -133,19 +148,19 @@
         </div>
       </div>
     </div>
-  </nav>
 </template>
-
 <script setup>
 import { computed, onMounted, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useOrdersStore } from '../stores/orders'
+import { useProductSetsStore } from '../stores/productSets'
 
 const route = useRoute()
 const router = useRouter()
 const authStore = useAuthStore()
 const ordersStore = useOrdersStore()
+const productSetsStore = useProductSetsStore()
 const showMissingPricesModal = ref(false)
 const savingPrices = ref(false)
 const priceError = ref('')
@@ -156,7 +171,26 @@ const userEmail = computed(() => {
 })
 
 const earnings = computed(() => ordersStore.orders.reduce((total, order) => total + (Number(order.total_price) || 0), 0))
+const amountPaid = computed(() => ordersStore.orders.reduce((total, order) => total + (Number(order.amount_paid) || 0), 0))
 const missingPriceOrders = computed(() => ordersStore.orders.filter(order => !(Number(order.total_price) > 0)))
+
+// Total pieces across every order. Sets are expanded, so 5 sets of 3 pieces count as 15.
+const totalPieces = computed(() => {
+  return ordersStore.orders.reduce((total, order) => {
+    return total + ordersStore.getOrderItems(order.id).reduce((orderTotal, item) => {
+      const itemQuantity = Number(item.quantity) || 0
+
+      if (item.product_id) return orderTotal + itemQuantity
+      if (!item.set_id) return orderTotal
+
+      const setItems = productSetsStore.getSetItems(item.set_id)
+      if (!setItems.length) return orderTotal + itemQuantity
+
+      const setPieces = setItems.reduce((sum, setItem) => sum + (Number(setItem.quantity) || 0), 0)
+      return orderTotal + (setPieces * itemQuantity)
+    }, 0)
+  }, 0)
+})
 
 const formatMoney = (amount) => `${amount.toFixed(2)} PLN`
 
@@ -206,6 +240,9 @@ const handleLogout = async () => {
 }
 
 onMounted(async () => {
+  if (productSetsStore.setItems.length === 0) {
+    await productSetsStore.fetchProductSets()
+  }
   if (ordersStore.orders.length === 0) {
     await ordersStore.fetchOrders()
   }

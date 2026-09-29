@@ -6,4 +6,18 @@
   body {
     @apply antialiased;
   }
+
+  input[type='date'] {
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  input[type='date']::-webkit-date-and-time-value {
+    min-width: 0;
+  }
+
+  input[type='date']::-webkit-datetime-edit {
+    text-align: left;
+    padding: 0;
+  }
 }

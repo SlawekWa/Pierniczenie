@@ -110,15 +110,23 @@ export const useOrdersStore = defineStore('orders', {
       this.error = null
       const orderIndex = this.orders.findIndex(order => order.id === orderId)
       const previousOrder = orderIndex !== -1 ? { ...this.orders[orderIndex] } : null
+      const statusChanged = previousOrder && previousOrder.status !== newStatus
 
       if (orderIndex !== -1) {
-        this.orders[orderIndex] = { ...this.orders[orderIndex], status: newStatus }
+        this.orders[orderIndex] = {
+          ...this.orders[orderIndex],
+          status: newStatus,
+          ...(statusChanged ? { production_completed_products: [] } : {})
+        }
       }
 
       try {
+        const orderData = { status: newStatus }
+        if (statusChanged) orderData.production_completed_products = []
+
         const { data, error } = await supabase
           .from('orders')
-          .update({ status: newStatus })
+          .update(orderData)
           .eq('id', orderId)
           .select('*, seasons(*)')
         
@@ -147,9 +155,15 @@ export const useOrdersStore = defineStore('orders', {
       this.error = null
 
       try {
+        const currentOrder = this.orders.find(order => order.id === orderId)
+        const updateData = { ...orderData }
+        if (currentOrder && Object.hasOwn(updateData, 'status') && currentOrder.status !== updateData.status) {
+          updateData.production_completed_products = []
+        }
+
         const { data, error } = await supabase
           .from('orders')
-          .update(orderData)
+          .update(updateData)
           .eq('id', orderId)
           .select('*, seasons(*)')
 
@@ -168,6 +182,36 @@ export const useOrdersStore = defineStore('orders', {
       } catch (error) {
         this.error = error.message
         console.error('Error updating order:', error)
+        return { success: false, error: error.message }
+      }
+    },
+
+    async updateProductionCompletedProducts(orderId, productIds) {
+      this.error = null
+
+      try {
+        const completedProducts = [...new Set(productIds.map(String))]
+        const { data, error } = await supabase
+          .from('orders')
+          .update({ production_completed_products: completedProducts })
+          .eq('id', orderId)
+          .select('*, seasons(*)')
+
+        if (error) throw error
+
+        const orderIndex = this.orders.findIndex(order => order.id === orderId)
+        if (orderIndex !== -1 && data?.length) {
+          this.orders[orderIndex] = {
+            ...this.orders[orderIndex],
+            ...data[0],
+            seasons: data[0].seasons || this.orders[orderIndex].seasons
+          }
+        }
+
+        return { success: true }
+      } catch (error) {
+        this.error = error.message
+        console.error('Error updating production progress:', error)
         return { success: false, error: error.message }
       }
     },
@@ -244,6 +288,202 @@ export const useOrdersStore = defineStore('orders', {
 
     getOrderItems(orderId) {
       return this.orderItems.filter(item => item.order_id === orderId)
+    },
+
+    getOrdersWithSet(setId) {
+      const targetSetId = String(setId)
+      const affected = {}
+
+      this.orders.forEach(order => {
+        this.getOrderItems(order.id).forEach(item => {
+          if (item.set_id == null || String(item.set_id) !== targetSetId) return
+          if (!affected[order.id]) {
+            affected[order.id] = {
+              orderId: order.id,
+              clientName: order.client_name,
+              dueDate: order.due_date,
+              setName: item.product_sets?.name || 'Zestaw',
+              quantity: 0
+            }
+          }
+          affected[order.id].quantity += Number(item.quantity) || 0
+        })
+      })
+
+      return Object.values(affected)
+    },
+
+    getOrdersWithProduct(productId) {
+      const productSetsStore = useProductSetsStore()
+      const targetProductId = String(productId)
+      const direct = {}
+      const viaSets = {}
+
+      this.orders.forEach(order => {
+        this.getOrderItems(order.id).forEach(item => {
+          if (item.product_id != null && String(item.product_id) === targetProductId) {
+            if (!direct[order.id]) {
+              direct[order.id] = {
+                orderId: order.id,
+                clientName: order.client_name,
+                dueDate: order.due_date,
+                setName: null,
+                quantity: 0
+              }
+            }
+            direct[order.id].quantity += Number(item.quantity) || 0
+            return
+          }
+
+          if (item.set_id == null) return
+          const setName = item.product_sets?.name || 'Zestaw'
+          const containsProduct = productSetsStore
+            .getSetItems(item.set_id)
+            .some(setItem => String(setItem.product_id) === targetProductId)
+
+          if (!containsProduct) return
+
+          if (!viaSets[order.id]) {
+            viaSets[order.id] = {
+              orderId: order.id,
+              clientName: order.client_name,
+              dueDate: order.due_date,
+              setName,
+              quantity: 0
+            }
+          }
+          viaSets[order.id].quantity += Number(item.quantity) || 0
+        })
+      })
+
+      return { direct: Object.values(direct), viaSets: Object.values(viaSets) }
+    },
+
+    // Removes the set from every order that uses it and lowers each order total
+    // by the set price frozen on the order item, not the current catalog price.
+    async deleteSetWithOrders(setId) {
+      this.loading = true
+      this.error = null
+
+      const setName = this.orderItems.find(item => String(item.set_id) === String(setId))?.product_sets?.name
+        || null
+
+      try {
+      const affectedOrders = this.getOrdersWithSet(setId)
+
+      for (const affected of affectedOrders) {
+        affected.removedAmount = 0
+        const items = this.getOrderItems(affected.orderId).filter(item =>
+            item.set_id != null && String(item.set_id) === String(setId)
+          )
+
+          for (const item of items) {
+            const { error: deleteError } = await supabase
+              .from('order_items')
+              .delete()
+              .eq('id', item.id)
+
+            if (deleteError) throw deleteError
+
+            this.orderItems = this.orderItems.filter(entry => entry.id !== item.id)
+            affected.removedAmount += ((Number(item.unit_price) || 0) * (Number(item.quantity) || 0))
+          }
+
+          const order = this.orders.find(entry => entry.id === affected.orderId)
+          if (!order) continue
+
+          const nextTotal = Math.max(0, (Number(order.total_price) || 0) - affected.removedAmount)
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({ total_price: nextTotal })
+            .eq('id', affected.orderId)
+
+          if (updateError) throw updateError
+
+          order.total_price = nextTotal
+        }
+
+        return { success: true, affectedOrders: affectedOrders.length, setName }
+      } catch (error) {
+        this.error = error.message
+        console.error('Error deleting set with orders:', error)
+        return { success: false, error: error.message }
+      } finally {
+        this.loading = false
+      }
+    },
+
+    // Removes the product from orders that list it directly (lowering those order
+    // totals) and from set compositions, where the set price is left untouched.
+    async deleteProductWithOrders(productId) {
+      this.loading = true
+      this.error = null
+
+      try {
+        const { direct, viaSets } = this.getOrdersWithProduct(productId)
+        let removedAmount = 0
+        let removedItems = 0
+
+        for (const affected of direct) {
+          const items = this.getOrderItems(affected.orderId).filter(item =>
+            item.product_id != null && String(item.product_id) === String(productId)
+          )
+
+          for (const item of items) {
+            const { error: deleteError } = await supabase
+              .from('order_items')
+              .delete()
+              .eq('id', item.id)
+
+            if (deleteError) throw deleteError
+
+            this.orderItems = this.orderItems.filter(entry => entry.id !== item.id)
+            removedAmount += ((Number(item.unit_price) || 0) * (Number(item.quantity) || 0))
+            removedItems += 1
+          }
+
+          const order = this.orders.find(entry => entry.id === affected.orderId)
+          if (!order) continue
+
+          const nextTotal = Math.max(0, (Number(order.total_price) || 0) - removedAmount)
+          const { error: updateError } = await supabase
+            .from('orders')
+            .update({ total_price: nextTotal })
+            .eq('id', affected.orderId)
+
+          if (updateError) throw updateError
+
+          order.total_price = nextTotal
+        }
+
+        // Orders keep their set; only the composition changes, so no totals move here.
+        const productSetsStore = useProductSetsStore()
+        const setItemDeletes = productSetsStore.setItems.filter(setItem =>
+          String(setItem.product_id) === String(productId)
+        )
+
+        for (const setItem of setItemDeletes) {
+          const { error: deleteError } = await supabase
+            .from('set_items')
+            .delete()
+            .eq('id', setItem.id)
+
+          if (deleteError) throw deleteError
+        }
+
+        const removedSetItemIds = new Set(setItemDeletes.map(setItem => setItem.id))
+        productSetsStore.setItems = productSetsStore.setItems.filter(
+          setItem => !removedSetItemIds.has(setItem.id)
+        )
+
+        return { success: true, affectedOrders: direct.length, setOrders: viaSets.length, removedItems }
+      } catch (error) {
+        this.error = error.message
+        console.error('Error deleting product with orders:', error)
+        return { success: false, error: error.message }
+      } finally {
+        this.loading = false
+      }
     },
 
     // Calculate total items in a column (breaking down sets into individual products)
@@ -332,7 +572,7 @@ export const useOrdersStore = defineStore('orders', {
       const isSetFallback = String(productId).startsWith('set-')
       const targetSetId = isSetFallback ? String(productId).slice(4) : null
 
-      const addProductOrder = (order, productName, quantity) => {
+      const addProductOrder = (order, productName, quantity, setName = null) => {
         const existing = productOrders[order.id]
         if (existing) {
           existing.quantity += quantity
@@ -343,14 +583,15 @@ export const useOrdersStore = defineStore('orders', {
           orderId: order.id,
           clientName: order.client_name,
           productName,
-          quantity
+          quantity,
+          setName
         }
       }
 
       this.orders.forEach(order => {
         this.getOrderItems(order.id).forEach(item => {
           if (item.product_id === productId && item.products) {
-            addProductOrder(order, item.products.name, item.quantity)
+            addProductOrder(order, item.products.name, item.quantity, null)
             return
           }
 
@@ -363,7 +604,8 @@ export const useOrdersStore = defineStore('orders', {
               addProductOrder(
                 order,
                 setItem.products?.name || item.product_sets.name,
-                matchesProduct ? setItem.quantity * item.quantity : item.quantity
+                matchesProduct ? setItem.quantity * item.quantity : item.quantity,
+                matchesProduct ? item.product_sets.name : null
               )
             }
           })

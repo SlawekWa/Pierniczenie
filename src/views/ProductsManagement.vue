@@ -12,7 +12,7 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Add Product Form -->
         <div class="lg:col-span-1">
-          <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-6 sticky top-24">
+          <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-6 sticky top-24" ref="productFormPanel">
             <div class="flex items-center gap-3 mb-6">
               <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -102,6 +102,50 @@
                   ></textarea>
                 </div>
               </div>
+
+              <div class="space-y-2">
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Link do zdjęcia (opcjonalny)</label>
+                <div class="relative">
+                  <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <input
+                    type="url"
+                    v-model="newProduct.image_url"
+                    class="w-full pl-12 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md"
+                    placeholder="https://.../products/choinkowy.jpg"
+                  />
+                </div>
+                <p class="text-xs text-gray-500 ml-1">Link do zdjęcia produktu z bucketu (np. Supabase Storage)</p>
+                <div v-if="newProduct.image_url" class="pt-1">
+                  <img
+                    :src="newProduct.image_url"
+                    alt="Podgląd zdjęcia produktu"
+                    class="h-32 w-32 object-cover rounded-2xl border border-gray-200 bg-gray-50"
+                    @error="handleImageError"
+                  />
+                </div>
+              </div>
+
+              <div class="space-y-2">
+                <label class="flex items-center gap-3 cursor-pointer">
+                  <div class="relative">
+                    <input
+                      type="checkbox"
+                      v-model="newProduct.is_available_solo"
+                      class="sr-only peer"
+                    />
+                    <div class="w-6 h-6 bg-gray-200 border-2 border-gray-300 rounded-lg peer-checked:bg-indigo-600 peer-checked:border-indigo-600 transition-all duration-200"></div>
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 text-white absolute top-1 left-1 opacity-0 peer-checked:opacity-100 transition-opacity duration-200" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7" />
+                    </svg>
+                  </div>
+                  <span class="text-sm font-semibold text-gray-700">Dostępny bez zestawu</span>
+                </label>
+                <p class="text-xs text-gray-500 ml-9">Czy produkt może być sprzedawany osobno, nie tylko w zestawie</p>
+              </div>
               
               <button
                 type="submit"
@@ -182,19 +226,40 @@
               <div
                 v-for="product in productsStore.products"
                 :key="product.id"
-                class="bg-gradient-to-br from-white to-gray-50/50 rounded-2xl border border-gray-200/50 p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.01]"
+                class="bg-gradient-to-br from-white to-gray-50/50 rounded-2xl border border-gray-200/50 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.01]"
               >
-                <div class="flex justify-between items-start mb-4">
-                  <div class="flex-1">
+                <div class="flex flex-col sm:flex-row sm:items-start sm:justify-between mb-4 gap-4">
+                  <div class="flex gap-4 min-w-0">
+                    <div
+                      v-if="hasProductImage(product)"
+                      class="w-20 h-20 shrink-0 overflow-hidden rounded-2xl border border-gray-200 bg-gray-50"
+                    >
+                    <img
+                      :src="productImageUrl(product)"
+                      :alt="product.name"
+                      class="w-full h-full object-cover"
+                      loading="lazy"
+                      @error="markProductImageAsBroken(product.id)"
+                    />
+                  </div>
+                  <div
+                    v-else
+                    class="w-20 h-20 shrink-0 rounded-2xl border border-gray-200 bg-gray-100 flex items-center justify-center"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </div>
+                  <div class="flex-1 min-w-0">
                     <div class="flex flex-wrap items-center gap-2 mb-2">
                       <h4 class="font-bold text-gray-800 text-lg">{{ product.name }}</h4>
                       <span
                         v-if="product.seasons"
-                        class="px-3 py-1 rounded-full text-xs font-bold flex items-center gap-2 shadow-sm"
+                        class="px-2.5 py-1 rounded-full text-xs font-bold inline-flex items-center gap-1.5 shadow-sm max-w-full"
                         :style="{ backgroundColor: product.seasons.color_hex + '45', color: '#111827', border: `1px solid ${product.seasons.color_hex}` }"
                       >
-                        <span class="w-2 h-2 rounded-full" :style="{ backgroundColor: product.seasons.color_hex }"></span>
-                        {{ product.seasons.name }}
+                        <span class="w-2 h-2 rounded-full shrink-0" :style="{ backgroundColor: product.seasons.color_hex }"></span>
+                        <span class="truncate">{{ product.seasons.name }}</span>
                       </span>
                     </div>
                     <div class="flex items-center gap-2 text-gray-600">
@@ -205,22 +270,43 @@
                         {{ product.price_per_piece != null ? `${product.price_per_piece} PLN/szt` : 'Brak ceny indywidualnej' }}
                       </span>
                     </div>
+                    <div class="flex items-center gap-2 mt-1">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" :class="product.is_available_solo ? 'text-green-600' : 'text-gray-400'" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                      </svg>
+                      <span class="text-sm" :class="product.is_available_solo ? 'text-green-600' : 'text-gray-400'">
+                        {{ product.is_available_solo ? 'Dostępny bez zestawu' : 'Tylko w zestawie' }}
+                      </span>
+                    </div>
+                    <a
+                      v-if="product.image_url"
+                      :href="product.image_url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="flex items-center gap-2 mt-1 text-sm text-indigo-600 hover:text-indigo-700 hover:underline min-w-0"
+                    >
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.828 10.172a4 4 0 010 5.656l-3 3a4 4 0 01-5.656-5.656l1.5-1.5m4.5 5.657a4 4 0 000-5.657l-3-3a4 4 0 015.657 5.656l-1.5 1.5" />
+                      </svg>
+                      <span class="truncate">{{ product.image_url }}</span>
+                    </a>
+                    </div>
                   </div>
-                  <div class="flex gap-2">
+                  <div class="flex gap-2 w-full sm:w-auto shrink-0">
                     <button
                       @click="startProductEdit(product)"
-                      class="flex items-center gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-600 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-all duration-200"
+                      class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 bg-indigo-50 border border-indigo-200 text-indigo-600 rounded-xl text-sm font-medium hover:bg-indigo-100 transition-all duration-200"
                     >
-                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5h2m-1-1v2m7.071 8.071l-5.657 5.657a2 2 0 01-1.414.586H8a2 2 0 01-2-2v-3.999a2 2 0 01.586-1.414l5.657-5.657a2 2 0 012.828 0l2.999 2.999a2 2 0 010 2.828z" />
                       </svg>
                       Edytuj
                     </button>
                     <button
                       @click="handleDeleteProduct(product.id)"
-                      class="flex items-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium hover:from-red-100 hover:to-pink-100 transition-all duration-200"
+                      class="flex flex-1 sm:flex-none items-center justify-center gap-2 px-4 py-2.5 bg-gradient-to-r from-red-50 to-pink-50 border border-red-200 text-red-600 rounded-xl text-sm font-medium hover:from-red-100 hover:to-pink-100 transition-all duration-200"
                     >
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                     </svg>
                     Usuń
@@ -233,32 +319,147 @@
         </div>
       </div>
     </div>
+
+    <!-- Delete Product Confirmation Modal -->
+    <div
+      v-if="pendingDeleteProduct"
+      class="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
+      @click.self="closeDeleteProductModal"
+    >
+      <div class="bg-white rounded-2xl p-6 w-full max-w-md max-h-[90vh] overflow-y-auto overscroll-contain">
+        <h3 class="text-xl font-bold text-gray-800 mb-2">Usuń produkt</h3>
+        <p class="text-sm text-gray-600 mb-4">
+          Produkt <span class="font-semibold text-gray-800">{{ pendingDeleteProduct.name }}</span> zostanie usunięty
+          z zamówień, w których występuje bezpośrednio, oraz ze składu zestawów. Ceny zestawów pozostaną bez zmian.
+        </p>
+
+        <div v-if="productDeleteUsage.direct.length" class="mb-4">
+          <p class="text-xs font-semibold text-gray-500 uppercase mb-2">
+            W zamówieniach bezpośrednio ({{ productDeleteUsage.direct.length }})
+          </p>
+          <ul class="space-y-2 mb-2">
+            <li
+              v-for="order in productDeleteUsage.direct"
+              :key="order.orderId"
+              class="flex items-center justify-between gap-3 bg-gray-50 rounded-xl px-4 py-3"
+            >
+              <span class="font-semibold text-gray-800">{{ order.clientName }}</span>
+              <span class="text-sm text-gray-500">{{ order.quantity }} szt.</span>
+            </li>
+          </ul>
+        </div>
+
+        <div v-if="productDeleteUsage.viaSets.length" class="mb-4">
+          <p class="text-xs font-semibold text-gray-500 uppercase mb-2">
+            W zamówieniach przez zestawy ({{ productDeleteUsage.viaSets.length }})
+          </p>
+          <ul class="space-y-2">
+            <li
+              v-for="order in productDeleteUsage.viaSets"
+              :key="order.orderId"
+              class="flex items-center justify-between gap-3 bg-amber-50 rounded-xl px-4 py-3"
+            >
+              <span class="font-semibold text-gray-800">{{ order.clientName }}</span>
+              <span class="text-sm text-amber-700">{{ order.setName }}</span>
+            </li>
+          </ul>
+        </div>
+
+        <p
+          v-if="!productDeleteUsage.direct.length && !productDeleteUsage.viaSets.length"
+          class="mb-4 text-sm text-gray-500"
+        >
+          Ten produkt nie występuje w żadnym zamówieniu ani zestawie.
+        </p>
+
+        <p v-if="deleteProductError" class="mb-4 text-sm text-red-600">{{ deleteProductError }}</p>
+
+        <div class="flex gap-3">
+          <button
+            type="button"
+            @click="closeDeleteProductModal"
+            :disabled="deletingProduct"
+            class="flex-1 px-4 py-3 bg-gray-200 text-gray-700 rounded-2xl hover:bg-gray-300 transition disabled:opacity-50"
+          >
+            Anuluj
+          </button>
+          <button
+            type="button"
+            @click="confirmDeleteProduct"
+            :disabled="deletingProduct"
+            class="flex-1 px-4 py-3 bg-red-600 text-white rounded-2xl hover:bg-red-700 transition disabled:opacity-50"
+          >
+            {{ deletingProduct ? 'Usuwanie...' : 'Usuń' }}
+          </button>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, onMounted, computed, nextTick } from 'vue'
 import { useProductsStore } from '../stores/products'
 import { useSeasonsStore } from '../stores/seasons'
+import { useOrdersStore } from '../stores/orders'
+import { useProductSetsStore } from '../stores/productSets'
 import Navigation from '../components/Navigation.vue'
+import { PLACEHOLDER_IMAGE_URL } from '../constants'
 
 const productsStore = useProductsStore()
 const seasonsStore = useSeasonsStore()
+const ordersStore = useOrdersStore()
+const productSetsStore = useProductSetsStore()
 
 const newProduct = ref({
   name: '',
   price_per_piece: 0,
   season_id: '',
-  description: ''
+  description: '',
+  image_url: '',
+  is_available_solo: true
 })
 const editingProductId = ref(null)
+const productFormPanel = ref(null)
+const pendingDeleteProductId = ref(null)
+const deletingProduct = ref(false)
+const deleteProductError = ref('')
+
+const pendingDeleteProduct = computed(() =>
+  productsStore.products.find(product => product.id === pendingDeleteProductId.value) || null
+)
+
+const productDeleteUsage = computed(() => {
+  if (pendingDeleteProductId.value == null) return { direct: [], viaSets: [] }
+  return ordersStore.getOrdersWithProduct(pendingDeleteProductId.value)
+})
+const brokenImages = ref({})
+
+const handleImageError = (event) => {
+  event.target.style.visibility = 'hidden'
+}
+
+const hasProductImage = (product) => !brokenImages.value[product.id]
+
+const productImageUrl = (product) => product.image_url || PLACEHOLDER_IMAGE_URL
+
+const markProductImageAsBroken = (productId) => {
+  brokenImages.value = { ...brokenImages.value, [productId]: true }
+}
+
+const normalizeImageUrl = (value) => {
+  const url = (value || '').trim()
+  return url.length > 0 ? url : null
+}
 
 const resetProductForm = () => {
   newProduct.value = {
     name: '',
     price_per_piece: 0,
     season_id: seasonsStore.getDefaultSeason()?.id || '',
-    description: ''
+    description: '',
+    image_url: '',
+    is_available_solo: true
   }
   editingProductId.value = null
 }
@@ -270,13 +471,18 @@ const handleSubmitProduct = async () => {
       ? null
       : parseFloat(newProduct.value.price_per_piece),
     season_id: parseInt(newProduct.value.season_id),
-    description: newProduct.value.description
+    description: newProduct.value.description,
+    image_url: normalizeImageUrl(newProduct.value.image_url),
+    is_available_solo: newProduct.value.is_available_solo
   }
   const result = editingProductId.value
     ? await productsStore.updateProduct(editingProductId.value, productData)
     : await productsStore.addProduct(productData)
 
   if (result.success) {
+    if (editingProductId.value && newProduct.value.image_url.trim()) {
+      delete brokenImages.value[editingProductId.value]
+    }
     resetProductForm()
   }
 }
@@ -287,7 +493,16 @@ const startProductEdit = (product) => {
     name: product.name || '',
     price_per_piece: product.price_per_piece ?? 0,
     season_id: product.season_id || '',
-    description: product.description || ''
+    description: product.description || '',
+    image_url: product.image_url || '',
+    is_available_solo: product.is_available_solo ?? true
+  }
+
+  // On phones the form sits above the product list, so bring it into view.
+  if (window.matchMedia('(max-width: 639px)').matches) {
+    nextTick(() => {
+      productFormPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    })
   }
 }
 
@@ -296,9 +511,45 @@ const cancelProductEdit = () => {
 }
 
 const handleDeleteProduct = async (productId) => {
-  if (confirm('Czy na pewno chcesz usunąć ten produkt?')) {
-    await productsStore.deleteProduct(productId)
+  pendingDeleteProductId.value = productId
+  deleteProductError.value = ''
+  await ordersStore.fetchOrders()
+}
+
+const closeDeleteProductModal = () => {
+  if (deletingProduct.value) return
+  pendingDeleteProductId.value = null
+  deleteProductError.value = ''
+}
+
+const confirmDeleteProduct = async () => {
+  const productId = pendingDeleteProductId.value
+  if (productId == null) return
+
+  deletingProduct.value = true
+  deleteProductError.value = ''
+
+  const cascade = await ordersStore.deleteProductWithOrders(productId)
+  if (!cascade.success) {
+    deleteProductError.value = cascade.error || 'Nie udało się usunąć produktu z zamówień.'
+    deletingProduct.value = false
+    return
   }
+
+  const productDelete = await productsStore.deleteProduct(productId)
+  if (!productDelete.success) {
+    deleteProductError.value = productDelete.error || 'Nie udało się usunąć produktu.'
+    deletingProduct.value = false
+    return
+  }
+
+  await Promise.all([
+    ordersStore.fetchOrders(),
+    productSetsStore.fetchProductSets()
+  ])
+
+  deletingProduct.value = false
+  pendingDeleteProductId.value = null
 }
 
 const handleRefreshProducts = async () => {
