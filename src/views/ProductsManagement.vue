@@ -439,9 +439,9 @@ const handleImageError = (event) => {
   event.target.style.visibility = 'hidden'
 }
 
-const hasProductImage = (product) => !brokenImages.value[product.id]
-
 const productImageUrl = (product) => product.image_url || PLACEHOLDER_IMAGE_URL
+
+const hasProductImage = (product) => !brokenImages.value[product.id] && Boolean(productImageUrl(product))
 
 const markProductImageAsBroken = (productId) => {
   brokenImages.value = { ...brokenImages.value, [productId]: true }

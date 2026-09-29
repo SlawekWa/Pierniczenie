@@ -553,9 +553,9 @@ const handleImageError = (event) => {
   event.target.style.visibility = 'hidden'
 }
 
-const hasSetImage = (set) => !brokenImages.value[set.id]
-
 const setImageUrl = (set) => set.image_url || PLACEHOLDER_IMAGE_URL
+
+const hasSetImage = (set) => !brokenImages.value[set.id] && Boolean(setImageUrl(set))
 
 const markSetImageAsBroken = (setId) => {
   brokenImages.value = { ...brokenImages.value, [setId]: true }
