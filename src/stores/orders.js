@@ -569,6 +569,9 @@ export const useOrdersStore = defineStore('orders', {
     getProductOrders(productId) {
       const productSetsStore = useProductSetsStore()
       const productOrders = {}
+      // Callers may pass a raw product id, a "product-<id>" production key, or a
+      // "set-<id>" fallback, so normalise before comparing against raw columns.
+      const rawProductId = String(productId).replace(/^product-/, '')
       const isSetFallback = String(productId).startsWith('set-')
       const targetSetId = isSetFallback ? String(productId).slice(4) : null
 
@@ -590,7 +593,7 @@ export const useOrdersStore = defineStore('orders', {
 
       this.orders.forEach(order => {
         this.getOrderItems(order.id).forEach(item => {
-          if (item.product_id === productId && item.products) {
+          if (item.product_id != null && String(item.product_id) === rawProductId && item.products) {
             addProductOrder(order, item.products.name, item.quantity, null)
             return
           }
@@ -598,7 +601,7 @@ export const useOrdersStore = defineStore('orders', {
           if (!item.set_id || !item.product_sets) return
           const setItems = productSetsStore.getSetItems(item.set_id)
           setItems.forEach(setItem => {
-            const matchesProduct = setItem.product_id === productId && setItem.products
+            const matchesProduct = setItem.product_id != null && String(setItem.product_id) === rawProductId && setItem.products
             const matchesFallbackSet = isSetFallback && String(item.set_id) === targetSetId
             if (matchesProduct || matchesFallbackSet) {
               addProductOrder(

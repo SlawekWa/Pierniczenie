@@ -121,7 +121,7 @@
                       type="button"
                       title="Pokaż zamówienia"
                       class="w-5 h-5 rounded-full border border-current/40 flex items-center justify-center hover:bg-white/70 transition"
-                      @click.stop="openProductOrders({ ...summaryItem, id: summaryItem.productId }, column.status)"
+                      @click.stop="openProductOrders({ ...summaryItem, id: summaryItem.id, productionKey: summaryItem.id }, column.status)"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <circle cx="12" cy="12" r="9" stroke-width="2" />
@@ -142,7 +142,7 @@
                         type="button"
                         title="Pokaż zamówienia z tym produktem"
                         class="w-5 h-5 rounded-full border border-current/40 flex items-center justify-center hover:bg-white/70 transition"
-                        @click.stop="openProductOrders({ ...component, id: component.productId }, column.status)"
+                        @click.stop="openProductOrders({ ...component, id: component.productId, productionKey: component.id }, column.status)"
                       >
                         <svg xmlns="http://www.w3.org/2000/svg" class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <circle cx="12" cy="12" r="9" stroke-width="2" />
@@ -287,13 +287,39 @@
             </svg>
           </button>
         </div>
+        <div v-if="productPopupOverallProgress.total" class="flex items-center gap-3 mb-5 px-4 py-3 bg-emerald-50 border border-emerald-200 rounded-2xl">
+          <div class="min-w-0">
+            <p class="text-xs font-semibold text-emerald-700 uppercase">Gotowe</p>
+            <p class="text-sm text-emerald-800">
+              <span class="font-bold text-lg">{{ productPopupOverallProgress.complete }}</span>
+              <span class="text-emerald-700"> z {{ productPopupOverallProgress.total }} szt.</span>
+            </p>
+          </div>
+          <div class="flex-1 min-w-0">
+            <div class="h-2 bg-emerald-100 rounded-full overflow-hidden">
+              <div
+                class="h-full bg-emerald-500 transition-all"
+                :style="{ width: `${productPopupOverallProgress.total ? (productPopupOverallProgress.complete / productPopupOverallProgress.total) * 100 : 0}%` }"
+              ></div>
+            </div>
+          </div>
+        </div>
+
         <div class="space-y-4">
           <section
             v-for="group in selectedProduct.columnGroups"
             :key="group.status"
             :class="group.status === selectedProduct.columnStatus ? '' : 'border-t border-gray-200 pt-4'"
           >
-            <h4 class="text-xs font-semibold text-gray-500 uppercase mb-2">{{ statusLabel(group.status) }}</h4>
+            <div class="flex items-center justify-between gap-2 mb-2">
+              <h4 class="text-xs font-semibold text-gray-500 uppercase">{{ statusLabel(group.status) }}</h4>
+              <span
+                v-if="productPopupProgress(group).total"
+                class="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200 whitespace-nowrap"
+              >
+                gotowe {{ productPopupProgress(group).complete }}/{{ productPopupProgress(group).total }}
+              </span>
+            </div>
             <div class="space-y-2">
               <div v-for="(order, index) in group.orders" :key="`${order.orderId}-${index}`" class="bg-gray-50 rounded-xl px-4 py-3">
                 <div class="flex items-center justify-between gap-2">
@@ -334,12 +360,26 @@
                 </div>
                 <div class="flex justify-between gap-3 text-sm text-gray-600">
                   <span>{{ order.setName ? `${order.productName} (${order.setName})` : order.productName }}</span>
-                  <span class="font-semibold shrink-0">{{ order.quantity }}x</span>
+                  <span class="flex items-center gap-2 shrink-0">
+                    <span class="font-semibold">{{ order.quantity }}x</span>
+                    <label class="flex items-center gap-1 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        class="h-4 w-4 rounded border-gray-300 text-emerald-600 focus:ring-2 focus:ring-emerald-500 cursor-pointer"
+                        :checked="isProductionProductComplete(findOrder(order.orderId), selectedProduct.productionKey)"
+                        :disabled="popupSavingOrderId === order.orderId"
+                        @change="toggleProductOrderCompletion(order.orderId, selectedProduct.productionKey)"
+                      />
+                      <span class="hidden sm:inline text-xs text-gray-500">gotowe</span>
+                    </label>
+                  </span>
                 </div>
               </div>
             </div>
           </section>
         </div>
+
+        <p v-if="popupProductionError" class="mt-4 text-sm text-red-600">{{ popupProductionError }}</p>
       </div>
     </div>
 
@@ -1113,6 +1153,8 @@ const isAcceptingOrder = ref(false)
 const showProductOrdersModal = ref(false)
 const selectedOrder = ref(null)
 const selectedProduct = ref(null)
+const popupSavingOrderId = ref(null)
+const popupProductionError = ref('')
 const isEditingOrder = ref(false)
 const savingOrder = ref(false)
 const editOrderError = ref('')
@@ -1804,6 +1846,64 @@ const closeProductOrders = () => {
   showProductOrdersModal.value = false
   selectedProduct.value = null
 }
+
+// Toggles one product's completion for a single order from the popup, using the
+// same production_completed_products field the order detail screen writes.
+const toggleProductOrderCompletion = async (orderId, productId) => {
+  if (popupSavingOrderId.value != null) return
+
+  const order = findOrder(orderId)
+  if (!order) return
+
+  const completedProducts = [...(order.production_completed_products || [])]
+  const index = completedProducts.indexOf(productId)
+  if (index === -1) completedProducts.push(productId)
+  else completedProducts.splice(index, 1)
+
+  popupSavingOrderId.value = orderId
+  popupProductionError.value = ''
+  const result = await ordersStore.updateProductionCompletedProducts(orderId, completedProducts)
+  popupSavingOrderId.value = null
+
+  if (!result.success) {
+    popupProductionError.value = result.error || 'Nie udało się zapisać postępu.'
+    return
+  }
+
+  // Refresh the popup rows so counts and checkmarks reflect the new state.
+  if (selectedProduct.value) {
+    openProductOrders(selectedProduct.value, selectedProduct.value.columnStatus)
+  }
+}
+
+// Total pieces of the popup's product across all listed orders, plus how many
+// are done. An order counts as done only when the product is marked complete
+// there, which is the same rule the column summary uses.
+const productPopupProgress = (group) => {
+  let total = 0
+  let complete = 0
+
+  group.orders.forEach(order => {
+    total += Number(order.quantity) || 0
+    if (isProductionProductComplete(findOrder(order.orderId), selectedProduct.value.productionKey)) {
+      complete += Number(order.quantity) || 0
+    }
+  })
+
+  return { complete, total }
+}
+
+const productPopupOverallProgress = computed(() => {
+  if (!selectedProduct.value) return { complete: 0, total: 0 }
+
+  return selectedProduct.value.columnGroups.reduce((result, group) => {
+    const groupProgress = productPopupProgress(group)
+    return {
+      complete: result.complete + groupProgress.complete,
+      total: result.total + groupProgress.total
+    }
+  }, { complete: 0, total: 0 })
+})
 
 const openOrderFromProduct = (orderId) => {
   const order = findOrder(orderId)
