@@ -189,6 +189,13 @@
               ]"
               :style="{ borderLeft: `4px solid ${order.seasons?.color_hex || '#E0E0E0'}` }"
             >
+              <div
+                v-if="order.is_shipping"
+                class="absolute inset-y-0 w-1.5 bg-cyan-400"
+                :style="{ left: '4px' }"
+                title="Wysyłka"
+                aria-label="Wysyłka"
+              ></div>
               <div v-if="getOrderProductionProgress(order).total" class="absolute inset-x-0 top-0 h-1.5 bg-gray-200">
                 <div class="h-full bg-emerald-500 transition-all" :style="{ width: `${getOrderProductionProgress(order).percent}%` }"></div>
               </div>
@@ -419,6 +426,18 @@
             />
           </div>
           
+          <div>
+            <label class="block text-sm font-semibold text-gray-700 mb-1">Wysyłka</label>
+            <label class="flex items-center gap-3 h-[46px] cursor-pointer select-none px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl hover:bg-gray-100 transition-all duration-200">
+              <input
+                type="checkbox"
+                v-model="newOrder.is_shipping"
+                class="w-5 h-5 shrink-0 rounded border-gray-300 text-cyan-600 focus:ring-2 focus:ring-cyan-500"
+              />
+              <span class="text-sm font-semibold text-gray-700">Do wysyłki</span>
+            </label>
+          </div>
+
           <div class="space-y-2">
             <label class="block text-sm font-semibold text-gray-700 mb-1">Cena zamówienia</label>
             <input
@@ -430,7 +449,7 @@
               placeholder="0.00"
             />
           </div>
-          
+
           <div class="space-y-2">
             <label class="block text-sm font-semibold text-gray-700 mb-1">Zapłacono</label>
             <input
@@ -442,7 +461,7 @@
               placeholder="0.00"
             />
           </div>
-          
+
           <div class="space-y-2">
             <label class="block text-sm font-semibold text-gray-700 mb-1">Zamówienie</label>
             <div class="space-y-2">
@@ -715,6 +734,11 @@
               <p class="text-sm text-gray-800">{{ selectedOrder.seasons?.name || '—' }}</p>
             </div>
             <div>
+              <p class="text-xs font-semibold text-gray-500 uppercase">Wysyłka</p>
+              <p v-if="selectedOrder.is_shipping" class="text-sm text-gray-800">Do wysyłki</p>
+              <p v-else class="text-sm text-gray-400">—</p>
+            </div>
+            <div>
               <p class="text-xs font-semibold text-gray-500 uppercase">Cena</p>
               <p class="text-sm text-gray-800">{{ selectedOrder.total_price != null ? `${selectedOrder.total_price} PLN` : '—' }}</p>
             </div>
@@ -798,6 +822,17 @@
                   {{ season.name }}
                 </option>
               </select>
+            </div>
+            <div>
+              <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Wysyłka</label>
+              <label class="flex items-center gap-3 h-[46px] cursor-pointer select-none px-3 py-3 bg-gray-50 border border-gray-200 rounded-2xl hover:bg-gray-100 transition-all duration-200">
+                <input
+                  type="checkbox"
+                  v-model="editOrder.is_shipping"
+                  class="w-5 h-5 shrink-0 rounded border-gray-300 text-cyan-600 focus:ring-2 focus:ring-cyan-500"
+                />
+                <span class="text-sm font-semibold text-gray-700">Do wysyłki</span>
+              </label>
             </div>
             <div>
               <label class="block text-xs font-semibold text-gray-500 uppercase mb-1">Cena zamówienia</label>
@@ -1165,6 +1200,7 @@ const editOrder = ref({
   due_date: '',
   total_price: '',
   amount_paid: 0,
+  is_shipping: false,
   notes: '',
   status: 'ordered',
   season_id: '',
@@ -1186,6 +1222,7 @@ const newOrder = ref({
   due_date: '',
   total_price: 0,
   amount_paid: 0,
+  is_shipping: false,
   notes: '',
   items: []
 })
@@ -1606,6 +1643,7 @@ const handleAddOrder = async () => {
     due_date: newOrder.value.due_date,
     total_price: Number(newOrder.value.total_price) || 0,
     amount_paid: Number(newOrder.value.amount_paid) || 0,
+    is_shipping: Boolean(newOrder.value.is_shipping),
     season_id: seasonId,
     notes: newOrder.value.notes,
     status: 'ordered'
@@ -1636,6 +1674,7 @@ const handleAddOrder = async () => {
       due_date: '',
       total_price: 0,
       amount_paid: 0,
+      is_shipping: false,
       notes: '',
       items: []
     }
@@ -1984,6 +2023,7 @@ const startEditingOrder = () => {
     due_date: toDateInputValue(selectedOrder.value.due_date),
     total_price: selectedOrder.value.total_price ?? '',
     amount_paid: selectedOrder.value.amount_paid ?? 0,
+    is_shipping: Boolean(selectedOrder.value.is_shipping),
     notes: selectedOrder.value.notes || '',
     status: selectedOrder.value.status,
     season_id: selectedOrder.value.season_id || '',
@@ -2137,6 +2177,7 @@ const saveOrderDetails = async () => {
     amount_paid: editOrder.value.amount_paid === '' || editOrder.value.amount_paid == null
       ? 0
       : parseFloat(editOrder.value.amount_paid),
+    is_shipping: Boolean(editOrder.value.is_shipping),
     notes: editOrder.value.notes || null,
     status: editOrder.value.status,
     season_id: editOrder.value.season_id || null
