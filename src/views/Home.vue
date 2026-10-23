@@ -72,7 +72,21 @@
         >
           <div class="flex items-center justify-between mb-4">
             <div class="flex items-center gap-2">
-              <div class="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg" :class="column.iconBg">
+              <div
+                v-if="selectionMode"
+                class="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg cursor-pointer transition"
+                :class="columnOrdersAllSelected(column.status) ? 'bg-indigo-600' : 'bg-gray-300'"
+                @click.stop="toggleColumnSelection(column.status)"
+                :title="columnOrdersAllSelected(column.status) ? 'Odznacz wszystkie' : 'Zaznacz wszystkie'"
+              >
+                <input
+                  type="checkbox"
+                  :checked="columnOrdersAllSelected(column.status)"
+                  @click.stop
+                  class="w-4 h-4 text-white rounded focus:ring-0 cursor-pointer"
+                />
+              </div>
+              <div v-else class="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg" :class="column.iconBg">
                 <svg v-if="column.status === 'ordered'" xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
@@ -1737,6 +1751,24 @@ const toggleOrderSelection = (orderId) => {
     selectedOrderIds.value = selectedOrderIds.value.filter(id => id !== orderId)
   } else {
     selectedOrderIds.value.push(orderId)
+  }
+}
+
+const columnOrderIds = (status) => getColumnOrders(status).map(order => order.id)
+
+const columnOrdersAllSelected = (status) => {
+  const ids = columnOrderIds(status)
+  return ids.length > 0 && ids.every(id => selectedOrderIds.value.includes(id))
+}
+
+const toggleColumnSelection = (status) => {
+  const ids = columnOrderIds(status)
+  if (ids.every(id => selectedOrderIds.value.includes(id))) {
+    selectedOrderIds.value = selectedOrderIds.value.filter(id => !ids.includes(id))
+  } else {
+    ids.forEach(id => {
+      if (!selectedOrderIds.value.includes(id)) selectedOrderIds.value.push(id)
+    })
   }
 }
 
