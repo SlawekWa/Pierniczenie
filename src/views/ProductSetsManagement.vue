@@ -12,7 +12,7 @@
       <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <!-- Add Set Form -->
         <div class="lg:col-span-1">
-          <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-6 sticky top-24" ref="setFormPanel">
+          <div class="bg-white/80 backdrop-blur-xl rounded-3xl shadow-xl border border-white/50 p-6" ref="setFormPanel">
             <div class="flex items-center gap-3 mb-6">
               <div class="w-10 h-10 bg-gradient-to-br from-emerald-400 to-cyan-500 rounded-xl flex items-center justify-center shadow-lg">
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
