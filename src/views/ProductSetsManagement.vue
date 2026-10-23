@@ -63,16 +63,16 @@
 
               <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div class="space-y-2">
-                  <label class="block text-sm font-semibold text-gray-700 mb-1">Cena od 10 szt.</label>
-                  <input type="number" v-model="newSet.price_10" step="0.01" min="0" placeholder="13.00" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
+                  <label class="block text-xs font-semibold text-gray-700 mb-1 whitespace-nowrap">Cena od 10 szt.</label>
+                  <input type="number" v-model="newSet.price_10" step="0.01" min="0" placeholder="13.00" class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
                 </div>
                 <div class="space-y-2">
-                  <label class="block text-sm font-semibold text-gray-700 mb-1">Cena od 20 szt.</label>
-                  <input type="number" v-model="newSet.price_20" step="0.01" min="0" placeholder="13.00" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
+                  <label class="block text-xs font-semibold text-gray-700 mb-1 whitespace-nowrap">Cena od 20 szt.</label>
+                  <input type="number" v-model="newSet.price_20" step="0.01" min="0" placeholder="13.00" class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
                 </div>
                 <div class="space-y-2">
-                  <label class="block text-sm font-semibold text-gray-700 mb-1">Cena od 30 szt.</label>
-                  <input type="number" v-model="newSet.price_30" step="0.01" min="0" placeholder="13.00" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
+                  <label class="block text-xs font-semibold text-gray-700 mb-1 whitespace-nowrap">Cena od 30 szt.</label>
+                  <input type="number" v-model="newSet.price_30" step="0.01" min="0" placeholder="13.00" class="w-full px-3 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
                 </div>
               </div>
 
