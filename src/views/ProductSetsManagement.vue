@@ -42,7 +42,7 @@
               </div>
               
               <div class="space-y-2">
-                <label class="block text-sm font-semibold text-gray-700 mb-1">Cena za zestaw</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Cena za zestaw (1 szt.)</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -60,7 +60,22 @@
                   />
                 </div>
               </div>
-              
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">Cena od 10 szt.</label>
+                  <input type="number" v-model="newSet.price_10" step="0.01" min="0" placeholder="13.00" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">Cena od 20 szt.</label>
+                  <input type="number" v-model="newSet.price_20" step="0.01" min="0" placeholder="13.00" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">Cena od 30 szt.</label>
+                  <input type="number" v-model="newSet.price_30" step="0.01" min="0" placeholder="13.00" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
+                </div>
+              </div>
+
               <div class="space-y-2">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Sezon</label>
                 <div class="relative">
@@ -528,6 +543,9 @@ const ordersStore = useOrdersStore()
 const newSet = ref({
   name: '',
   price_per_set: '',
+  price_10: '',
+  price_20: '',
+  price_30: '',
   season_id: '',
   description: '',
   image_url: ''
@@ -597,6 +615,9 @@ const resetSetForm = () => {
   newSet.value = {
     name: '',
     price_per_set: '',
+    price_10: '',
+    price_20: '',
+    price_30: '',
     season_id: seasonsStore.getDefaultSeason()?.id || '',
     description: '',
     image_url: ''
@@ -608,6 +629,15 @@ const handleSubmitSet = async () => {
   const setData = {
     name: newSet.value.name,
     price_per_set: parseFloat(newSet.value.price_per_set),
+    price_10: newSet.value.price_10 === '' || newSet.value.price_10 == null
+      ? null
+      : parseFloat(newSet.value.price_10),
+    price_20: newSet.value.price_20 === '' || newSet.value.price_20 == null
+      ? null
+      : parseFloat(newSet.value.price_20),
+    price_30: newSet.value.price_30 === '' || newSet.value.price_30 == null
+      ? null
+      : parseFloat(newSet.value.price_30),
     season_id: parseInt(newSet.value.season_id),
     description: newSet.value.description,
     image_url: normalizeImageUrl(newSet.value.image_url)
@@ -629,6 +659,9 @@ const startSetEdit = (set) => {
   newSet.value = {
     name: set.name || '',
     price_per_set: set.price_per_set ?? '',
+    price_10: set.price_10 ?? set.price_per_set ?? '',
+    price_20: set.price_20 ?? set.price_per_set ?? '',
+    price_30: set.price_30 ?? set.price_per_set ?? '',
     season_id: set.season_id || '',
     description: set.description || '',
     image_url: set.image_url || ''

@@ -16,7 +16,7 @@
         />
       </div>
       <div>
-        <label class="block text-xs font-semibold text-gray-600 mb-1">Cena za zestaw</label>
+        <label class="block text-xs font-semibold text-gray-600 mb-1">Cena za zestaw (1 szt.)</label>
         <input
           type="number"
           v-model.number="item.newSet.price_per_set"
@@ -25,6 +25,20 @@
           placeholder="0.00"
           class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500"
         />
+      </div>
+      <div class="grid grid-cols-3 gap-2">
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">od 10 szt.</label>
+          <input type="number" v-model.number="item.newSet.price_10" min="0" step="0.01" placeholder="0.00" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">od 20 szt.</label>
+          <input type="number" v-model.number="item.newSet.price_20" min="0" step="0.01" placeholder="0.00" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-gray-600 mb-1">od 30 szt.</label>
+          <input type="number" v-model.number="item.newSet.price_30" min="0" step="0.01" placeholder="0.00" class="w-full px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-amber-500 focus:border-amber-500" />
+        </div>
       </div>
       <div>
         <label class="block text-xs font-semibold text-gray-600 mb-1">Sezon</label>

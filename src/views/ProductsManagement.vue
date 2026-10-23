@@ -42,7 +42,7 @@
               </div>
               
               <div class="space-y-2">
-                <label class="block text-sm font-semibold text-gray-700 mb-1">Cena za sztukę (opcjonalna)</label>
+                <label class="block text-sm font-semibold text-gray-700 mb-1">Cena za sztukę (1 szt.)</label>
                 <div class="relative">
                   <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -59,7 +59,22 @@
                   />
                 </div>
               </div>
-              
+
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">Cena od 10 szt.</label>
+                  <input type="number" v-model="newProduct.price_10" step="0.01" min="0" placeholder="13.00" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">Cena od 20 szt.</label>
+                  <input type="number" v-model="newProduct.price_20" step="0.01" min="0" placeholder="13.00" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
+                </div>
+                <div class="space-y-2">
+                  <label class="block text-sm font-semibold text-gray-700 mb-1">Cena od 30 szt.</label>
+                  <input type="number" v-model="newProduct.price_30" step="0.01" min="0" placeholder="13.00" class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md" />
+                </div>
+              </div>
+
               <div class="space-y-2">
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Sezon</label>
                 <div class="relative">
@@ -414,6 +429,9 @@ const productSetsStore = useProductSetsStore()
 const newProduct = ref({
   name: '',
   price_per_piece: 0,
+  price_10: 0,
+  price_20: 0,
+  price_30: 0,
   season_id: '',
   description: '',
   image_url: '',
@@ -456,6 +474,9 @@ const resetProductForm = () => {
   newProduct.value = {
     name: '',
     price_per_piece: 0,
+    price_10: 0,
+    price_20: 0,
+    price_30: 0,
     season_id: seasonsStore.getDefaultSeason()?.id || '',
     description: '',
     image_url: '',
@@ -470,6 +491,15 @@ const handleSubmitProduct = async () => {
     price_per_piece: newProduct.value.price_per_piece === '' || newProduct.value.price_per_piece == null
       ? null
       : parseFloat(newProduct.value.price_per_piece),
+    price_10: newProduct.value.price_10 === '' || newProduct.value.price_10 == null
+      ? null
+      : parseFloat(newProduct.value.price_10),
+    price_20: newProduct.value.price_20 === '' || newProduct.value.price_20 == null
+      ? null
+      : parseFloat(newProduct.value.price_20),
+    price_30: newProduct.value.price_30 === '' || newProduct.value.price_30 == null
+      ? null
+      : parseFloat(newProduct.value.price_30),
     season_id: parseInt(newProduct.value.season_id),
     description: newProduct.value.description,
     image_url: normalizeImageUrl(newProduct.value.image_url),
@@ -492,6 +522,9 @@ const startProductEdit = (product) => {
   newProduct.value = {
     name: product.name || '',
     price_per_piece: product.price_per_piece ?? 0,
+    price_10: product.price_10 ?? product.price_per_piece ?? 0,
+    price_20: product.price_20 ?? product.price_per_piece ?? 0,
+    price_30: product.price_30 ?? product.price_per_piece ?? 0,
     season_id: product.season_id || '',
     description: product.description || '',
     image_url: product.image_url || '',

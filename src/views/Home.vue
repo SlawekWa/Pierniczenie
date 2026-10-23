@@ -1512,6 +1512,9 @@ const startCreatingSet = (item) => {
   item.newSet = {
     name: '',
     price_per_set: '',
+    price_10: '',
+    price_20: '',
+    price_30: '',
     season_id: seasonsStore.getDefaultSeason()?.id || '',
     description: ''
   }
@@ -1560,6 +1563,16 @@ const createSetFromItem = async (item) => {
     return
   }
 
+  const price10 = item.newSet.price_10 === '' || item.newSet.price_10 == null
+    ? setPrice
+    : parseFloat(item.newSet.price_10)
+  const price20 = item.newSet.price_20 === '' || item.newSet.price_20 == null
+    ? setPrice
+    : parseFloat(item.newSet.price_20)
+  const price30 = item.newSet.price_30 === '' || item.newSet.price_30 == null
+    ? setPrice
+    : parseFloat(item.newSet.price_30)
+
   const setSeasonId = item.newSet.season_id || seasonsStore.getDefaultSeason()?.id
   if (!setSeasonId) {
     item.setError = 'Wybierz sezon zestawu.'
@@ -1573,6 +1586,9 @@ const createSetFromItem = async (item) => {
   const setResult = await productSetsStore.addProductSet({
     name: setName,
     price_per_set: setPrice,
+    price_10: price10,
+    price_20: price20,
+    price_30: price30,
     season_id: setSeasonId,
     description: item.newSet.description || '',
     image_url: null
