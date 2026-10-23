@@ -531,12 +531,10 @@ const startProductEdit = (product) => {
     is_available_solo: product.is_available_solo ?? true
   }
 
-  // On phones the form sits above the product list, so bring it into view.
-  if (window.matchMedia('(max-width: 639px)').matches) {
-    nextTick(() => {
-      productFormPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
+  // Bring the form into view so the user can edit it right away.
+  nextTick(() => {
+    productFormPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
 }
 
 const cancelProductEdit = () => {

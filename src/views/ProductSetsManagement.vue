@@ -667,12 +667,10 @@ const startSetEdit = (set) => {
     image_url: set.image_url || ''
   }
 
-  // On phones the form sits above the set list, so bring it into view.
-  if (window.matchMedia('(max-width: 639px)').matches) {
-    nextTick(() => {
-      setFormPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
-    })
-  }
+  // Bring the form into view so the user can edit it right away.
+  nextTick(() => {
+    setFormPanel.value?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+  })
 }
 
 const cancelSetEdit = () => {
