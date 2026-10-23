@@ -547,7 +547,7 @@
                     <input
                       type="number"
                       v-model.number="item.quantity"
-                      @input="recalculateNewOrderTotal"
+                      @input="handleNewOrderQuantityChange(item)"
                       required
                       min="1"
                       class="w-20 px-3 py-2 bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 transition-all duration-200"
@@ -946,7 +946,7 @@
                     <label class="text-xs text-gray-500 sm:hidden">Ilość</label>
                     <input
                       v-model.number="item.quantity"
-                      @input="recalculateEditOrderTotal"
+                      @input="handleEditOrderQuantityChange(item)"
                       type="number"
                       required
                       min="1"
@@ -1420,7 +1420,7 @@ const getOrderItemOptions = (item) => {
 const selectOrderItem = (item, option) => {
   item.id = option.id
   item.search = option.name
-  item.unit_price = Number(item.type === 'product' ? option.price_per_piece : option.price_per_set) || 0
+  item.unit_price = getCatalogItemPrice(item)
   item.showOptions = false
   recalculateNewOrderTotal()
 }
@@ -1453,7 +1453,16 @@ const recalculateNewOrderTotal = () => {
 const getCatalogItemPrice = (item) => {
   const collection = item.type === 'product' ? productsStore.products : productSetsStore.productSets
   const catalogItem = collection.find(option => String(option.id) === String(item.id))
-  return Number(item.type === 'product' ? catalogItem?.price_per_piece : catalogItem?.price_per_set) || 0
+  if (!catalogItem) return 0
+
+  const quantity = Number(item.quantity) || 0
+  const base = Number(item.type === 'product' ? catalogItem.price_per_piece : catalogItem.price_per_set) || 0
+  let tierPrice = base
+  if (quantity >= 30) tierPrice = Number(item.type === 'product' ? catalogItem.price_30 : catalogItem.price_30) || base
+  else if (quantity >= 20) tierPrice = Number(item.type === 'product' ? catalogItem.price_20 : catalogItem.price_20) || base
+  else if (quantity >= 10) tierPrice = Number(item.type === 'product' ? catalogItem.price_10 : catalogItem.price_10) || base
+
+  return tierPrice
 }
 
 const resetEditItemSelection = (item) => {
@@ -1464,8 +1473,19 @@ const resetEditItemSelection = (item) => {
   recalculateEditOrderTotal()
 }
 
-const setEditItemPrice = (item) => {
-  item.unit_price = getCatalogItemPrice(item)
+const handleNewOrderQuantityChange = (item) => {
+  if (item.id) {
+    const price = getCatalogItemPrice(item)
+    if (price > 0) item.unit_price = price
+  }
+  recalculateNewOrderTotal()
+}
+
+const handleEditOrderQuantityChange = (item) => {
+  if (item.id) {
+    const price = getCatalogItemPrice(item)
+    if (price > 0) item.unit_price = price
+  }
   recalculateEditOrderTotal()
 }
 
