@@ -81,9 +81,8 @@
               >
                 <input
                   type="checkbox"
-                  :checked="columnOrdersAllSelected(column.status)"
-                  @click.stop
-                  class="w-4 h-4 text-white rounded focus:ring-0 cursor-pointer"
+                  :checked="columnOrderIds(column.status).some(id => selectedOrderIds.value.includes(id))"
+                  class="w-4 h-4 text-white rounded focus:ring-0 cursor-pointer pointer-events-none"
                 />
               </div>
               <div v-else class="w-8 h-8 rounded-lg flex items-center justify-center shadow-lg" :class="column.iconBg">
@@ -1763,7 +1762,8 @@ const columnOrdersAllSelected = (status) => {
 
 const toggleColumnSelection = (status) => {
   const ids = columnOrderIds(status)
-  if (ids.every(id => selectedOrderIds.value.includes(id))) {
+  const hasSelection = ids.some(id => selectedOrderIds.value.includes(id))
+  if (hasSelection) {
     selectedOrderIds.value = selectedOrderIds.value.filter(id => !ids.includes(id))
   } else {
     ids.forEach(id => {
