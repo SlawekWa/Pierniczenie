@@ -4,6 +4,7 @@ import Login from '../views/Login.vue'
 import ProductsManagement from '../views/ProductsManagement.vue'
 import ProductSetsManagement from '../views/ProductSetsManagement.vue'
 import SeasonsManagement from '../views/SeasonsManagement.vue'
+import OrdersTable from '../views/OrdersTable.vue'
 import { useAuthStore } from '../stores/auth'
 
 const router = createRouter({
@@ -36,6 +37,12 @@ const router = createRouter({
       path: '/seasons',
       name: 'seasons',
       component: SeasonsManagement,
+      meta: { requiresAuth: true }
+    },
+    {
+      path: '/orders-table',
+      name: 'orders-table',
+      component: OrdersTable,
       meta: { requiresAuth: true }
     }
   ]

@@ -43,6 +43,14 @@
             >
               Usuń wszystkie ({{ selectedOrderIds.length }})
             </button>
+            <button
+              v-if="selectionMode && selectedOrderIds.length"
+              type="button"
+              @click="archiveSelectedOrders"
+              class="flex items-center gap-2 px-3 sm:px-4 py-3 bg-gray-600 text-white rounded-xl hover:bg-gray-700 transition-all duration-200 text-sm"
+            >
+              Zarchiwizuj ({{ selectedOrderIds.length }})
+            </button>
             <div class="relative flex-1 sm:flex-none sm:min-w-[200px] min-w-0">
               <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -81,7 +89,7 @@
               >
                 <input
                   type="checkbox"
-                  :checked="columnOrderIds(column.status).some(id => selectedOrderIds.value.includes(id))"
+                  :checked="columnOrderIds(column.status).some(id => selectedOrderIds.includes(id))"
                   class="w-4 h-4 text-white rounded focus:ring-0 cursor-pointer pointer-events-none"
                 />
               </div>
@@ -1804,6 +1812,15 @@ const deleteSelectedOrders = async () => {
   selectionMode.value = false
 }
 
+const archiveSelectedOrders = async () => {
+  const orderIds = [...selectedOrderIds.value]
+  for (const orderId of orderIds) {
+    await ordersStore.updateOrderStatus(orderId, 'archived')
+  }
+  selectedOrderIds.value = []
+  selectionMode.value = false
+}
+
 const getColumnOrders = (status) => {
   return ordersStore.orders.filter(order => order.status === status)
 }
@@ -1928,7 +1945,7 @@ const openProductOrders = (product, columnStatus) => {
   const orderStatuses = new Map(ordersStore.orders.map(order => [String(order.id), order.status]))
   const activeOrders = ordersStore.getProductOrders(product.id)
     .map(order => ({ ...order, status: orderStatuses.get(String(order.orderId)) }))
-    .filter(order => order.status && order.status !== 'completed')
+    .filter(order => order.status && order.status !== 'completed' && order.status !== 'archived')
   const orderedStatuses = [
     columnStatus,
     ...columns

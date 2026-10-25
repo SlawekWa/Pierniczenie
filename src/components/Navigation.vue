@@ -103,6 +103,13 @@
             </svg>
             <span>Sezony</span>
           </router-link>
+          <router-link
+            to="/orders-table"
+            class="hidden sm:flex items-center justify-center gap-1.5 rounded-xl px-2.5 py-2 text-[11px] sm:px-4 sm:py-2 sm:text-sm transition-all duration-200"
+            :class="isCurrentRoute('/orders-table') ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50/50 text-indigo-600 hover:bg-indigo-100/50'"
+          >
+            <span>Zarchiwizowane</span>
+          </router-link>
         </div>
       </div>
     </div>
@@ -170,13 +177,13 @@ const userEmail = computed(() => {
   return authStore.user?.email || 'Brak danych'
 })
 
-const earnings = computed(() => ordersStore.orders.reduce((total, order) => total + (Number(order.total_price) || 0), 0))
-const amountPaid = computed(() => ordersStore.orders.reduce((total, order) => total + (Number(order.amount_paid) || 0), 0))
-const missingPriceOrders = computed(() => ordersStore.orders.filter(order => !(Number(order.total_price) > 0)))
+const earnings = computed(() => ordersStore.orders.filter(o => o.status !== 'archived').reduce((total, order) => total + (Number(order.total_price) || 0), 0))
+const amountPaid = computed(() => ordersStore.orders.filter(o => o.status !== 'archived').reduce((total, order) => total + (Number(order.amount_paid) || 0), 0))
+const missingPriceOrders = computed(() => ordersStore.orders.filter(order => order.status !== 'archived' && !(Number(order.total_price) > 0)))
 
 // Total pieces across every order. Sets are expanded, so 5 sets of 3 pieces count as 15.
 const totalPieces = computed(() => {
-  return ordersStore.orders.reduce((total, order) => {
+  return ordersStore.orders.filter(o => o.status !== 'archived').reduce((total, order) => {
     return total + ordersStore.getOrderItems(order.id).reduce((orderTotal, item) => {
       const itemQuantity = Number(item.quantity) || 0
 
