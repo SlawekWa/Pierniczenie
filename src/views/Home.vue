@@ -57,10 +57,22 @@
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5v12a2 2 0 002 2z" />
                 </svg>
               </div>
-              <select v-model="selectedSeasonId" @change="handleSeasonChange" class="w-full pl-12 pr-10 py-3 bg-white border border-gray-200 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500 transition-all duration-200 shadow-sm hover:shadow-md appearance-none">
-                <option value="">Wszystkie sezony</option>
-                <option v-for="season in seasonsStore.seasons" :key="season.id" :value="season.id">{{ season.name }}</option>
-              </select>
+              <div class="relative w-full" data-season-dropdown>
+                <button type="button" @click="seasonDropdownOpen = !seasonDropdownOpen" class="relative w-full pl-12 pr-4 py-3 bg-white border border-gray-200 rounded-2xl text-left text-sm shadow-sm hover:shadow-md">
+                  <span class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                    </svg>
+                  </span>
+                  {{ (selectedSeasonId.length === 0 || selectedSeasonId.length === seasonsStore.seasons.length) ? 'Wszystkie sezony' : seasonsStore.seasons.filter(s => selectedSeasonId.map(String).includes(String(s.id))).map(s=>s.name).join(', ') }}
+                </button>
+                <div v-if="seasonDropdownOpen" class="absolute z-50 mt-2 w-full bg-white border border-gray-200 rounded-2xl shadow-lg p-2 max-h-60 overflow-auto">
+                  <label v-for="season in seasonsStore.seasons" :key="season.id" class="flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-gray-50 rounded">
+                    <input type="checkbox" :value="String(season.id)" v-model="selectedSeasonId" @change="handleSeasonChange" />
+                    <span class="text-sm">{{ season.name }}</span>
+                  </label>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -699,6 +711,16 @@
             <template v-else>{{ isEditingOrder ? 'Edycja zamówienia' : 'Szczegóły zamówienia' }}</template>
           </h3>
           <button
+            type="button"
+            @click="generateOrderPdf(selectedOrder)"
+            class="text-gray-400 hover:text-gray-600 transition mr-2"
+            title="Generuj PDF"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+          </button>
+          <button
             @click="closeOrderDetails"
             class="text-gray-400 hover:text-gray-600 transition"
           >
@@ -1131,6 +1153,8 @@
 </template>
 
 <script setup>
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 import { ref, computed, onMounted, onBeforeUnmount, watch } from 'vue'
 import { useOrdersStore } from '../stores/orders'
 import { useSeasonsStore } from '../stores/seasons'
@@ -1201,7 +1225,8 @@ const AWAITING_CONFIRMATION_STATUS = 'awaiting_confirmation'
 const ACCEPTED_STATUS = columns[0].status
 const isTouchDevice = window.matchMedia('(hover: none) and (pointer: coarse)').matches
 
-const selectedSeasonId = ref('')
+const selectedSeasonId = ref(JSON.parse(localStorage.getItem('selectedSeasons') || '[]'))
+const seasonDropdownOpen = ref(false)
 const showAddOrderModal = ref(false)
 const showOrderDetailsModal = ref(false)
 const showPendingOrdersModal = ref(false)
@@ -1253,7 +1278,11 @@ const selectedOrders = computed(() => {
 })
 
 const soloProducts = computed(() => {
-  return productsStore.products.filter(product => product.is_available_solo !== false)
+  return productsStore.products.filter(product => {
+    if (product.is_available_solo === false) return false
+    if (selectedSeasonId.value.length && !selectedSeasonId.value.map(String).includes(String(product.season_id))) return false
+    return true
+  })
 })
 
 const editOrderProducts = computed(() => {
@@ -1432,7 +1461,7 @@ const normalizeSearchValue = (value) => {
 const getOrderItemOptions = (item) => {
   const options = item.type === 'product'
     ? soloProducts.value
-    : productSetsStore.productSets
+    : productSetsStore.productSets.filter(set => !selectedSeasonId.value.length || selectedSeasonId.value.map(String).includes(String(set.season_id)))
   const search = normalizeSearchValue(item.search?.trim() || '')
   if (!search) return options
   return options.filter(option => normalizeSearchValue(option.name).includes(search))
@@ -1441,6 +1470,7 @@ const getOrderItemOptions = (item) => {
 const selectOrderItem = (item, option) => {
   item.id = option.id
   item.search = option.name
+  item.unit_price = 0
   item.unit_price = getCatalogItemPrice(item)
   item.showOptions = false
   recalculateNewOrderTotal()
@@ -1737,12 +1767,13 @@ const handleAddOrder = async () => {
     }
     showAddOrderModal.value = false
 
-    await ordersStore.fetchOrders(selectedSeasonId.value || null)
+    await ordersStore.fetchOrders(null)
   }
 }
 
 const handleSeasonChange = async () => {
-  await ordersStore.fetchOrders(selectedSeasonId.value || null)
+  localStorage.setItem('selectedSeasons', JSON.stringify(selectedSeasonId.value))
+  await ordersStore.fetchOrders(null)
 }
 
 const toggleSelectionMode = () => {
@@ -1822,7 +1853,11 @@ const archiveSelectedOrders = async () => {
 }
 
 const getColumnOrders = (status) => {
-  return ordersStore.orders.filter(order => order.status === status)
+  return ordersStore.orders.filter(order => {
+    if (order.status !== status) return false
+    if (selectedSeasonId.value.length && !selectedSeasonId.value.map(String).includes(String(order.season_id))) return false
+    return true
+  })
 }
 
 const getColumnItemCount = (status) => {
@@ -2334,6 +2369,50 @@ const openOrderDetails = (order) => {
   showOrderDetailsModal.value = true
 }
 
+const generateOrderPdf = (order) => {
+  if (!order) return
+  const items = ordersStore.getOrderItems(order.id)
+  const rows = items.map(it => {
+    const name = it.product_id ? (it.products?.name || 'Produkt') : (it.product_sets?.name || 'Zestaw')
+    const qty = it.quantity
+    const price = Number(it.unit_price) || 0
+    return `<tr><td>${name}</td><td>${qty}</td><td>${price.toFixed(2)}</td><td>${(price*qty).toFixed(2)}</td></tr>`
+  }).join('') + `<tr><td colspan="3" class="total">Kwota za całość PLN</td><td class="total">${Number(order.total_price||0).toFixed(2)}</td></tr>`
+  const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><title>Zamowienie</title><style>
+    body{font-family:Arial,sans-serif;margin:20mm;color:#111}
+    h1{text-align:center;font-weight:bold;color:#1e3a8a;font-size:18pt;margin:0 0 12pt}
+    h2{font-size:12pt;font-weight:bold;letter-spacing:-0.5px;margin:14pt 0 4pt;color:#2563eb}
+    p{margin:2pt 0;font-size:10.5pt}
+    table{width:100%;border-collapse:collapse;margin:6pt 0}
+    th,td{border:1px solid #999;padding:4pt 6pt;font-size:10pt}
+    th{background:#e5e7eb;font-weight:bold}
+    .total{font-weight:bold}
+    @media print{body{margin:10mm}}
+  </style></head><body>
+  <h1>ZAMÓWIENIE LUKROWANKI</h1>
+  <br><br><h2>Dane Zleceniodawcy:</h2>
+  <p><strong>Imię i nazwisko: ${order.client_name || ''}</strong></p>
+  <br><br><h2>Dane Zleceniobiorcy:</h2>
+  <p><strong>Imię i nazwisko: LUKROWANKI Anna Wawrzyn</strong></p>
+  <br><br><h2>Szczegóły zamówienia:</h2>
+  <table><thead><tr><th>Nazwa produktu</th><th>Ilość sztuk</th><th>Cena za sztukę</th><th>Razem</th></tr></thead><tbody>${rows}</tbody></table>
+  <br><br>
+  <p>*Koszt kuriera DHL/paczkomatu InPost zostanie doliczony po spakowaniu paczki.</p>
+  <h2>Data realizacji zamówienia: <span style="color:#111">${order.due_date || ''}</span></h2>
+  <br><br><h2>Dane do przelewu:</h2>
+  <p>Nazwa odbiorcy: ANNA WAWRZYN</p>
+  <p>Numer rachunku bankowego: 58 1090 1665 0000 0001 1352 9910</p>
+  <p>Tytuł przelewu: PIERNIKI</p>
+  <p>BLIK: 697 496 084</p>
+  </body></html>`
+  const w = window.open('', '_blank')
+  w.document.write(html)
+  w.document.close()
+  w.focus()
+  setTimeout(() => { w.print() }, 300)
+}
+
+
 const closeOrderDetails = () => {
   showOrderDetailsModal.value = false
   selectedOrder.value = null
@@ -2503,6 +2582,7 @@ const closeDropdownsOnOutsideClick = (event) => {
     item.showOptions = false
     item.newSetItems?.forEach(entry => { entry.showOptions = false })
   })
+  if (!event.target?.closest?.('[data-season-dropdown]')) seasonDropdownOpen.value = false
 }
 
 onMounted(async () => {

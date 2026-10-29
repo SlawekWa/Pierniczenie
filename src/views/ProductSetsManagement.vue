@@ -5,7 +5,25 @@
     <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
       <!-- Header -->
       <div class="mb-8">
-        <h2 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent mb-2">Zarządzanie Zestawami</h2>
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-2">
+        <div>
+          <h2 class="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Zarządzanie Zestawami</h2>
+          </div>
+        <div class="relative" data-season-dropdown>
+                <button type="button" @click="seasonDropdownOpen = !seasonDropdownOpen" class="relative px-3 py-2 pl-9 bg-white border border-gray-200 rounded-xl text-sm shadow-sm">
+                  <span class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                  </span>
+                  {{ (selectedSeasonId.length === 0 || selectedSeasonId.length === seasonsStore.seasons.length) ? 'Wszystkie sezony' : seasonsStore.seasons.filter(s => selectedSeasonId.map(String).includes(String(s.id))).map(s=>s.name).join(', ') }}
+                </button>
+                <div v-if="seasonDropdownOpen" class="absolute z-50 mt-2 w-56 bg-white border border-gray-200 rounded-2xl shadow-lg p-2 max-h-60 overflow-auto">
+                  <label v-for="season in seasonsStore.seasons" :key="season.id" class="flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-gray-50 rounded">
+                    <input type="checkbox" :value="String(season.id)" v-model="selectedSeasonId" @change="handleSeasonChange" />
+                    <span class="text-sm">{{ season.name }}</span>
+                  </label>
+                </div>
+              </div>
+      </div>
         <p class="text-gray-600">Twórz zestawy pierników i zarządzaj ich składem</p>
       </div>
 
@@ -222,7 +240,7 @@
             
             <div v-else class="space-y-4">
               <div
-                v-for="set in productSetsStore.productSets"
+                v-for="set in filteredSets"
                 :key="set.id"
                 class="bg-gradient-to-br from-white to-gray-50/50 rounded-2xl border border-gray-200/50 p-4 sm:p-6 hover:shadow-xl transition-all duration-300 transform hover:scale-[1.01]"
               >
@@ -538,6 +556,8 @@ import { PLACEHOLDER_IMAGE_URL } from '../constants'
 const productSetsStore = useProductSetsStore()
 const productsStore = useProductsStore()
 const seasonsStore = useSeasonsStore()
+const selectedSeasonId = ref(JSON.parse(localStorage.getItem('selectedSeasons') || '[]'))
+const seasonDropdownOpen = ref(false)
 const ordersStore = useOrdersStore()
 
 const newSet = ref({
@@ -772,14 +792,22 @@ const handleDeleteSetItem = async (itemId) => {
 }
 
 const handleRefreshSets = async () => {
-  await productSetsStore.fetchProductSets()
+  await productSetsStore.fetchProductSets(null)
 }
 
+const handleSeasonChange = () => { localStorage.setItem('selectedSeasons', JSON.stringify(selectedSeasonId.value)) }
+
+const filteredSets = computed(() => {
+  if (!selectedSeasonId.value.length || selectedSeasonId.value.length === seasonsStore.seasons.length) return productSetsStore.productSets
+  return productSetsStore.productSets.filter(p => selectedSeasonId.value.map(String).includes(String(p.season_id)))
+})
+
 onMounted(async () => {
+  document.addEventListener('click', (e) => { if (!e.target?.closest?.('[data-season-dropdown]')) seasonDropdownOpen.value = false })
   await Promise.all([
     seasonsStore.fetchSeasons(),
-    productsStore.fetchProducts(),
-    productSetsStore.fetchProductSets()
+    productsStore.fetchProducts(null),
+    productSetsStore.fetchProductSets(null)
   ])
   newSet.value.season_id = seasonsStore.getDefaultSeason()?.id || ''
 })

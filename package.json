@@ -24,6 +24,8 @@
     "@lucide/vue": "^1.48.0",
     "@supabase/supabase-js": "^2.117.2",
     "@vitejs/plugin-vue": "^6.0.9",
+    "jspdf": "^4.2.1",
+    "jspdf-autotable": "^5.0.9",
     "pinia": "^4.0.3",
     "vite": "^8.3.1",
     "vue": "^3.5.43",
